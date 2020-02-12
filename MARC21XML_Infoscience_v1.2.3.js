@@ -1,6 +1,6 @@
 {
-	"translatorID": "e20c80da-05f9-4468-b50d-e5dd8a0f72ac",
-	"label": "MARC21XML-Infoscience v1.2.3",
+	"translatorID": "a6876154-5654-45fb-b260-406238e5e68a",
+	"label": "MARC21XML-Infoscience v1.2.4",
 	"creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL)",
 	"target": "xml",
 	"minVersion": "3.0",
@@ -15,10 +15,6 @@
 	"browserSupport": "g",
 	"lastUpdated": "2020-02-03 13:15:00"
 }
-
-// TO DO
-// enlever 005
-// enlever leader
 
 // DISCLAIMER:
 // There are different cataloguing rules, specification of MARC dialects,
@@ -534,11 +530,11 @@ function doExport()
 				
 				//This defines the data map for changing the dummy values into the real values at the end. Strictly speaking, defining the 
 				//Units wouldn't be necessary, but it might be helpful for future scaling up.
-				Object.defineProperty(dataMap, [tempUnit.labAuth], {value: item.code});
-				Object.defineProperty(dataMap, [tempUnit.labLDAP], {value: item.section});
-				Object.defineProperty(dataMap, [tempUnit.labShort], {value: item.legislativeBody});
-				Object.defineProperty(dataMap, [tempUnit.labManagerEmail], {value: item.session});
-				Object.defineProperty(dataMap, [recCreMailTemp], {value: item.rights});
+				Object.defineProperty(dataMap, [tempUnit.labAuth], { value: item.code} );
+				Object.defineProperty(dataMap, [tempUnit.labLDAP], { value: item.section} );
+				Object.defineProperty(dataMap, [tempUnit.labShort], { value: item.legislativeBody} );
+				Object.defineProperty(dataMap, [tempUnit.labManagerEmail], { value: item.session} );
+				Object.defineProperty(dataMap, [recCreMailTemp], { value: item.rights} );
 				dataMap[tempAuthorSubfield] = newAuthorSubfield; //Add the subfield to replace the lab head's name
 				
 				/*
@@ -584,9 +580,21 @@ function doExport()
 				//020__a: ISBN			
 				if (item.ISBN)
 				{
-					let cleanedISBN = item.ISBN.replace(/[a-zA-Z,\.;:\-_]/g, '');//can there be more than one isbn in the item.ISBN field? 
-					currentFieldNode = mapProperty(recordNode, "datafield", {"tag" : "020", "ind1" : " ", "ind2" : " " }, true );
-					mapProperty(currentFieldNode, "subfield", {"code" : "a"}, cleanedISBN );
+					let rawISBN = item.ISBN.trim(); //remove leading and trailig whitespaces first, just to be on the safe side
+					if(rawISBN.indexOf(" ") !== -1) //Still some whitespaces found?
+					{
+						let allISBNArray = rawISBN.split(" ");
+						for(let i = 0; i < allISBNArray.length(); i++)//Create a field for every ISBN number found in the record
+						{
+							currentFieldNode = mapProperty(recordNode, "datafield", {"tag" : "020", "ind1" : " ", "ind2" : " " }, true );
+							mapProperty(currentFieldNode, "subfield", {"code" : "a"}, allISBNArray[i].replace(/[a-zA-Z,\.;:\-_]/g, '') ); //review the replace part
+						}
+						/*
+						let cleanedISBN = item.ISBN.replace(/[a-zA-Z,\.;:\-_]/g, '');//can there be more than one isbn in the item.ISBN field? 
+						currentFieldNode = mapProperty(recordNode, "datafield", {"tag" : "020", "ind1" : " ", "ind2" : " " }, true );
+						mapProperty(currentFieldNode, "subfield", {"code" : "a"}, cleanedISBN );
+						*/
+					}
 				}
 				
 				//022__a: ISSN
@@ -857,10 +865,10 @@ function doExport()
 				if(typeOfPublication)
 				{
 					currentFieldNode = mapProperty(recordNode, "datafield",  {"tag" : "909", "ind1" : "C", "ind2" : "0" } , true );
-					mapProperty(currentFieldNode, "subfield", {"code" : "0"}, tempUnit.labAuth);
-					mapProperty(currentFieldNode, "subfield", {"code" : "m"}, tempUnit.labManagerEmail);
-					mapProperty(currentFieldNode, "subfield", {"code" : "p"}, tempUnit.labShort);
-					mapProperty(currentFieldNode, "subfield", {"code" : "x"}, tempUnit.labLDAP);
+					mapProperty(currentFieldNode, "subfield", {"code" : "0"}, tempUnit.labAuth );
+					mapProperty(currentFieldNode, "subfield", {"code" : "m"}, tempUnit.labManagerEmail );
+					mapProperty(currentFieldNode, "subfield", {"code" : "p"}, tempUnit.labShort );
+					mapProperty(currentFieldNode, "subfield", {"code" : "x"}, tempUnit.labLDAP );
 				}
 			
 				//960__a: e-mail of the record's creator
@@ -879,7 +887,7 @@ function doExport()
 				if(typeOfPublication)
 				{
 					currentFieldNode = mapProperty(recordNode, "datafield",  {"tag" : "980", "ind1" : " ", "ind2" : " " } , true );
-					mapProperty(currentFieldNode, "subfield",  {"code" : "a"}, fieldDoctype[typeOfPublication]);
+					mapProperty(currentFieldNode, "subfield",  {"code" : "a"}, fieldDoctype[typeOfPublication] );
 				}
 			
 				//981__a: Validation (MANDATORY)
@@ -915,7 +923,7 @@ function doExport()
  	var re = new RegExp(Object.keys(dataMap).join("|"),"g");
 	var xmlDoc = xmlDoc.replace(re, function(matched){
 		return dataMap[matched];
-	});
+	} );
 	
 	//Once the "hard data" are replaced, create a nice-looking xml file.
 	var pretty = xmlDoc.replace(/<record/g, "\n<record")
