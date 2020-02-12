@@ -13,7 +13,7 @@
 	"inRepository": true,
 	"translatorType": 2,
 	"browserSupport": "g",
-	"lastUpdated": "2020-02-03 13:15:00"
+	"lastUpdated": "2020-02-12 10:49:00"
 }
 
 // DISCLAIMER:
@@ -576,6 +576,9 @@ function doExport()
 				//Leave this in: It's the first child instance and doesn't do any harm. WIll be overwritten by Infoscience
 				var cleanedDateModified =  item.dateModified.replace(/\D/g , '');//format must be YYYYMMDDHHMMSS
 				var firstChild = mapProperty(recordNode, "controlfield", {"tag" : "005"}, cleanedDateModified + '.0' );
+				
+				//TO DO:
+				//Combine the ISBN and ISSN function using a MARC field object. Make sure the hyphens in the ISSN stay in place.
 
 				//020__a: ISBN			
 				if (item.ISBN)
@@ -584,10 +587,10 @@ function doExport()
 					if(rawISBN.indexOf(" ") !== -1) //Still some whitespaces found?
 					{
 						let allISBNArray = rawISBN.split(" ");
-						for(let i = 0; i < allISBNArray.length(); i++)//Create a field for every ISBN number found in the record
+						for(let i = 0; i < allISBNArray.length; i++)//Create a field for every ISBN number found in the record
 						{
 							currentFieldNode = mapProperty(recordNode, "datafield", {"tag" : "020", "ind1" : " ", "ind2" : " " }, true );
-							mapProperty(currentFieldNode, "subfield", {"code" : "a"}, allISBNArray[i].replace(/[a-zA-Z,\.;:\-_]/g, '') ); //review the replace part
+							mapProperty(currentFieldNode, "subfield", {"code" : "a"}, allISBNArray[i].replace(/[a-zA-Z,\.;:_]/g, '') ); //not replacing the hyphens. Original: .replace(/[a-zA-Z,\.;:\-_]/g, '')
 						}
 						/*
 						let cleanedISBN = item.ISBN.replace(/[a-zA-Z,\.;:\-_]/g, '');//can there be more than one isbn in the item.ISBN field? 
@@ -598,10 +601,19 @@ function doExport()
 				}
 				
 				//022__a: ISSN
-				if (item.ISSN && bibliographicLevel == "m") //see also field 773 for e.g. articles
+				if (item.ISSN)// && bibliographicLevel == "m") //see also field 773 for e.g. articles
 				{
+					let rawISSN = item.ISSN.trim();
+					let allISSNArray = rawISSN.split(", ");
+					for(let i = 0; i < allISSNArray.length; i++)
+					{
+						currentFieldNode = mapProperty(recordNode, "datafield", {"tag" : "022", "ind1" : " ", "ind2" : " " }, true );
+						mapProperty(currentFieldNode, "subfield", {"code" : "a"}, allISSNArray[i] );
+					}
+					/*
 					currentFieldNode = mapProperty(recordNode, "datafield", {"tag" : "022", "ind1" : " ", "ind2" : " " }, true );
 					mapProperty(currentFieldNode, "subfield", {"code" : "a"}, item.ISSN );
+					*/
 				}
 					
 				//0247_a: DOI
@@ -944,22 +956,3 @@ function doExport()
 //https://www.zotero.org/support/dev/client_coding/javascript_api
 //https://groups.google.com/forum/m/#!forum/zotero-dev
 //https://niche-canada.org/member-projects/zotero-guide/chapter1.html
-
-
-/*
-var item = ZoteroPane.getSelectedItems()[0];
-
-var str = "";
-var creators = item.getCreators(0)[0]
-
-str += Zotero.ItemTypes.getName(item.itemTypeID) + "\n\n"
-
-str += creators['lastName'] + ", " + creators['firstName'] + "\n\n";
-
-str += "index\tvalue\n----------------------\n";
-
-for (i = 0; i < 35; i++)
-{
-    str += i + "\t" + item.getField(i) + "\n";
-}
-*/
