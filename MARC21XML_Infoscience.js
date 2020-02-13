@@ -1,6 +1,6 @@
 {
 	"translatorID": "a6876154-5654-45fb-b260-406238e5e68a",
-	"label": "MARC21XML-Infoscience v1.2.4",
+	"label": "MARC21XML-Infoscience v1.2.5",
 	"creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL)",
 	"target": "xml",
 	"minVersion": "3.0",
@@ -311,7 +311,7 @@ function ISTypeMap(book, bkSectn, cnfPaper, cnfProc, artcl, rprt) {
 	this.book = book;
 	this.bookSection = bkSectn;
 	this.conferencePaper = cnfPaper;
-	this.conferencePaperProc = cnfProc;
+	this.conferencePaperProc = cnfProc; //Currently not used
 	this.journalArticle = artcl;
 	this.report = rprt;
 }
@@ -408,11 +408,15 @@ function doExport()
 	//MB, 14.01.2020
 	//Infoscience-specific key-value pairs
 	/*
-	* The lists "fieldPubtype", "fieldSubtype" and "fieldDoctype" specify the possible
-	* contents of the fields 037__a, 336__a and 980__a in Infoscience, linked to the type of the item read from Zotero.
-	* "Conference proceedings" is not among Zotero's publication types, a manual distinction is made on a programmatic
-	* level here: If an item "Conference paper" is treated, the script checks to see if the field "Proceedings title"
-	* is empty. If yes, the type is "CONF" or "Conference Papers", otherwise "PROC" or "Conference Proceedings".
+	The lists "fieldPubtype", "fieldSubtype" and "fieldDoctype" specify the possible
+	contents of the fields 037__a, 336__a and 980__a in Infoscience, linked to the type of the item read from Zotero.
+	
+	The object ISTypeMap provides the translation between the publication types from Zotero and the three classes of publications (publication type,
+	publication subtype and doctype) used in Infoscience. ISTypeMap serves as blueprint for the three corresponding translators fieldPubtye,
+	fieldSubtype and fieldDoctype defined below.
+	
+	Since "conference proceedings" is not among Zotero's publication types, "Book" should be preferred to classify it in Zotero. In the case that a future
+	update of Zotero introduces conference proceedings, the type maps currently contain a corresponding entry.
 	*/
 	
 	//possible values for field 037__a
@@ -486,11 +490,7 @@ function doExport()
 	while ((item = Z.nextItem()))
 	{
 		typeOfPublication = item.itemType;
-		if (typeOfPublication == "conferencePaper" && item.proceedingsTitle)
-			{
-				typeOfPublication += "Proc"; //add suffix "Proc" to "conferencePaper" if it's contained in a conference proceedings
-			}
-		
+				
 		Z.debug(debugMarker +
 			"Entry " + ++itemCounter + ": " + typeOfPublication + "\n" + debugMarker);
 		
