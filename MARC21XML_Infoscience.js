@@ -386,7 +386,8 @@ function doWhatWeWant() {
     xmlDocument = parser.parseFromString('<collection xmlns="http://www.loc.gov/MARC21/slim" />', 'application/xml');
 
 
-    Z.debug(infoscience_authors["Helm, Lothar"]);
+    // Z.debug(infoscience_authors["Helm, Lothar"]);
+    Z.debug(infoscience_labs["LPI"]);
 
     //Read global options
     var exportNotes = Z.getOption("exportNotes");
@@ -421,33 +422,12 @@ function doWhatWeWant() {
     fieldDoctype.bookSection = "CHAPTER";
     fieldDoctype.report = "REPORT";
 
-    //Strictly speaking, only one person is necessary. But this offers the possibility for an extension in the future
-    var labHead = new Person();
-
-    //The two units necessary for this script
-    var tempUnit = new Unit("zotUnitAuth", "zotUnitID", "zotUnitShort", "zotLabManMail"); //tempUnit holds the dummy entries
-    var finalUnit = new Unit(); //fields of finalUnit will be filled in with the data from the metadata item	
-    finalUnit.unitHead = labHead; //Strictly speaking not necessary, but it logically ties a lab head to her/his lab. For future extension.
+    var finalUnit = new Unit();
 
     var recCreMailTemp = "zotRecCreMail";
     var recCreMail = "";
 
-    //Holds the followig entries:
-    //key: dummy text (taken from tempUnit), value: real text (empty at the moment)
-    var dataMap = {
-        [tempUnit.labAuth]: "",
-        [tempUnit.labLDAP]: "",
-        [tempUnit.labShort]: "",
-        [tempUnit.labManagerEmail]: "",
-        [recCreMailTemp]: ""
-    };
-
     //Z.debug(debugMarker + JSON.stringify(dataMap, null, 4) + debugMarker);
-
-    /*
-     * When defining several units and/or heads, use indices (tempUnit0, tempUnit1, finalUnit0, finalUnit1, labHead0, labHead1 etc.)
-     * Consider renaming "labHead" to "author" or similar, since they might be, well, just authors.
-     */
 
     //Publication status
     var status = {
@@ -475,17 +455,18 @@ function doWhatWeWant() {
             recCreMail = item.rights; // 960__a
 
             // Create final dataset for the unit
-            Object.defineProperty(finalUnit, "labAuth", { value: item.code }); // 909C00 (Infoscience)
-            Object.defineProperty(finalUnit, "labLDAP", { value: item.section }); // 909C0p
-            Object.defineProperty(finalUnit, "labManagerEmail", { value: item.session }); // 909C0m
-            Object.defineProperty(finalUnit, "labShort", { value: item.legislativeBody }); // 909C0x
+            var lab_code = item.section;
+            Object.defineProperty(finalUnit, "labLDAP", { value: lab_code }); // 909C0p
+            Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs["recid"] }); // 909C00 (Infoscience)
+            Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs["manager"] }); // 909C0m
+            Object.defineProperty(finalUnit, "labShort", { value: infoscience_labs["uid"] }); // 909C0x
 
             // Create final dataset for the lab head
             // We will no longer need this when I'm done. AB 2020-02-14
-            Object.defineProperty(labHead, "firstName", { value: item.creators[0]['firstName'] }); //for 700__a
-            Object.defineProperty(labHead, "lastName", { value: item.creators[0]['lastName'] }); //for 700__a
-            Object.defineProperty(labHead, "lhAuth", { value: item.abstractNote }); //field 700_0
-            Object.defineProperty(labHead, "nrSciper", { value: item.extra }); //field 700_g
+            // Object.defineProperty(labHead, "firstName", { value: item.creators[0]['firstName'] }); //for 700__a
+            // Object.defineProperty(labHead, "lastName", { value: item.creators[0]['lastName'] }); //for 700__a
+            // Object.defineProperty(labHead, "lhAuth", { value: item.abstractNote }); //field 700_0
+            // Object.defineProperty(labHead, "nrSciper", { value: item.extra }); //field 700_g
 
             //Z.debug(debugMarker + labHead + debugMarker);
             //Z.debug(debugMarker + finalUnit + debugMarker);
@@ -494,19 +475,11 @@ function doWhatWeWant() {
             //Z.debug(debugMarker + JSON.stringify(finalUnit, null, 4) + debugMarker);
 
             //Add last element: Replacement of the author field
-            var tempAuthorSubfield = subfield("a", finalUnit.unitHead.lastName + ", " + finalUnit.unitHead.firstName);
-            var newAuthorSubfield = tempAuthorSubfield + subfield("0", finalUnit.unitHead.lhAuth) + subfield("g", finalUnit.unitHead.nrSciper);
+            // var tempAuthorSubfield = subfield("a", finalUnit.unitHead.lastName + ", " + finalUnit.unitHead.firstName);
+            // var newAuthorSubfield = tempAuthorSubfield + subfield("0", finalUnit.unitHead.lhAuth) + subfield("g", finalUnit.unitHead.nrSciper);
             //Z.debug("tempAuthorSubfield: " + tempAuthorSubfield);
             //Z.debug("newAuthorSubfield: " + newAuthorSubfield);
 
-            //This defines the data map for changing the dummy values into the real values at the end. Strictly speaking, defining the 
-            //Units wouldn't be necessary, but it might be helpful for future scaling up.
-            Object.defineProperty(dataMap, [tempUnit.labAuth], { value: item.code });
-            Object.defineProperty(dataMap, [tempUnit.labLDAP], { value: item.section });
-            Object.defineProperty(dataMap, [tempUnit.labShort], { value: item.legislativeBody });
-            Object.defineProperty(dataMap, [tempUnit.labManagerEmail], { value: item.session });
-            Object.defineProperty(dataMap, [recCreMailTemp], { value: item.rights });
-            dataMap[tempAuthorSubfield] = newAuthorSubfield; //Add the subfield to replace the lab head's name
         } else {
         	// Z.debug("this record looks legit, saving it");
             record_array.push(item);
@@ -832,10 +805,10 @@ function doWhatWeWant() {
             //909C0x: Group ID (U.....)
             if (typeOfPublication) {
                 currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "909", "ind1": "C", "ind2": "0" }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "0" }, tempUnit.labAuth);
-                mapProperty(currentFieldNode, "subfield", { "code": "m" }, tempUnit.labManagerEmail);
-                mapProperty(currentFieldNode, "subfield", { "code": "p" }, tempUnit.labShort);
-                mapProperty(currentFieldNode, "subfield", { "code": "x" }, tempUnit.labLDAP);
+                mapProperty(currentFieldNode, "subfield", { "code": "0" }, infoscience_labs[lab_code]["recid"]);
+                mapProperty(currentFieldNode, "subfield", { "code": "m" }, infoscience_labs[lab_code]["manager"]);
+                mapProperty(currentFieldNode, "subfield", { "code": "p" }, lab_code);
+                mapProperty(currentFieldNode, "subfield", { "code": "x" }, infoscience_labs[lab_code]["uid"]);
             }
 
             //960__a: e-mail of the record's creator
@@ -885,10 +858,10 @@ function doWhatWeWant() {
     var xmlDoc = serializer.serializeToString(xmlDocument);
 
     //Use the data map to replace all the temporary values.
-    var re = new RegExp(Object.keys(dataMap).join("|"), "g");
-    var xmlDoc = xmlDoc.replace(re, function(matched) {
-        return dataMap[matched];
-    });
+    // var re = new RegExp(Object.keys(dataMap).join("|"), "g");
+    // var xmlDoc = xmlDoc.replace(re, function(matched) {
+    //    return dataMap[matched];
+    // });
 
     //Once the "hard data" are replaced, create a nice-looking xml file.
     var pretty = xmlDoc.replace(/<record/g, "\n<record")
