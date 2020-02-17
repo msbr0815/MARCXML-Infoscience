@@ -1,7 +1,7 @@
 {
     "translatorID": "a6876154-5654-45fb-b260-406238e5e68a",
-    "label": "MARC21XML-Infoscience v1.2.5",
-    "creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL)",
+    "label": "MARC21XML-Infoscience v1.2.6-pre",
+    "creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL), Alain Borel (Infoscience-based improvements)",
     "target": "xml",
     "minVersion": "3.0",
     "maxVersion": "",
@@ -744,7 +744,18 @@ function doWhatWeWant() {
                 let creator = item.creators[i];
                 if (!creator.fieldMode) {
                     currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "700", "ind1": " ", "ind2": " " }, true);
-                    mapProperty(currentFieldNode, "subfield", { "code": "a" }, creator.lastName + ", " + creator.firstName);
+                    var fullname = creator.lastName + ", " + creator.firstName;
+                    mapProperty(currentFieldNode, "subfield", { "code": "a" }, fullname);
+                    if (fullname in infoscience_authors) {
+                    	// Z.debug(infoscience_authors[fullname]);
+                    	infoscience_authors[fullname].forEach(function(author_item, index) {
+                    		// Z.debug(author_item);
+                    		if (author_item[2].includes(lab_code)) {
+                    			mapProperty(currentFieldNode, "subfield", { "code": "g" }, author_item[0]);
+                    			mapProperty(currentFieldNode, "subfield", { "code": "0" }, author_item[1]);
+                    		}
+                    	});
+                    }
                 } else {
                     //Corporate author: CERN (ou ENAC ?) publications
                     currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "710", "ind1": "2", "ind2": " " }, true);
