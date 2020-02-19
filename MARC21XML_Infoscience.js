@@ -1,5 +1,5 @@
 {
-    "translatorID": "a6876154-5654-45fb-b260-406238e5e68a",
+    "translatorID": "3d2572a6-e2b3-4b26-bcdd-881e197f594d",
     "label": "MARC21XML-Infoscience v1.2.6-pre",
     "creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL), Alain Borel (Infoscience-based improvements)",
     "target": "xml",
@@ -418,9 +418,16 @@ function doWhatWeWant() {
     //possible values for field 980__a
     //Infoscience doctype
     //only almost identical to fieldPubtype
-    var fieldDoctype = fieldPubtype;
-    fieldDoctype.bookSection = "CHAPTER";
-    fieldDoctype.report = "REPORT";
+    
+    var fieldDoctype = new ISTypeMap("BOOK", "CHAPTER", "CONF", "PROC", "ARTICLE", "REPORT");
+    //Can't do this: Changing fieldDoctype affects fieldPubtype
+    //var fieldDoctype = fieldPubtype;
+    //fieldDoctype.bookSection = "CHAPTER";
+    //fieldDoctype.report = "REPORT";
+
+    Z.debug(debugMarker + JSON.stringify(fieldPubtype, null, 4) + debugMarker);
+	Z.debug(debugMarker + JSON.stringify(fieldSubtype, null, 4) + debugMarker);
+	Z.debug(debugMarker + JSON.stringify(fieldDoctype, null, 4) + debugMarker);
 
     var finalUnit = new Unit();
 
