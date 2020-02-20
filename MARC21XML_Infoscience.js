@@ -462,11 +462,11 @@ function doWhatWeWant() {
             recCreMail = item.rights; // 960__a
 
             // Create final dataset for the unit
-            var lab_code = item.section;
+            var lab_code = item.legislativeBody;
             Object.defineProperty(finalUnit, "labLDAP", { value: lab_code }); // 909C0p
-            Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs["recid"] }); // 909C00 (Infoscience)
-            Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs["manager"] }); // 909C0m
-            Object.defineProperty(finalUnit, "labShort", { value: infoscience_labs["uid"] }); // 909C0x
+            Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs[lab_code]["recid"] }); // 909C00 (Infoscience)
+            Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs[lab_code]["manager"] }); // 909C0m
+            Object.defineProperty(finalUnit, "labShort", { value: infoscience_labs[lab_code]["uid"] }); // 909C0x
 
             // Create final dataset for the lab head
             // We will no longer need this when I'm done. AB 2020-02-14
