@@ -431,8 +431,7 @@ function doWhatWeWant() {
 
     var finalUnit = new Unit();
 
-    var recCreMailTemp = "zotRecCreMail";
-    var recCreMail = "";
+    var recCreMail = "zotRecCreMail";
 
     //Z.debug(debugMarker + JSON.stringify(dataMap, null, 4) + debugMarker);
 
@@ -831,7 +830,7 @@ function doWhatWeWant() {
 
             //960__a: e-mail of the record's creator
             currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "960", "ind1": " ", "ind2": " " }, true);
-            mapProperty(currentFieldNode, "subfield", { "code": "a" }, recCreMailTemp);
+            mapProperty(currentFieldNode, "subfield", { "code": "a" }, recCreMail);
 
             //973__a: Affiliation [EPFL, OTHER]
             //973__r: Reviewing status [REVIEWED, NON-REVIEWED]
