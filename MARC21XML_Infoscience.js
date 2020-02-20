@@ -348,7 +348,8 @@ var pubSourceMap = { // key: Zotero entry in "extra" ; value: Infoscience entry 
     "DOI": "DOI",
     "WOS": "ISI",
     //"Scopus" : "ScopusID", // Ignore for the moment: ScopusID doesn't show in Zotero
-    "PMID": "PMID"
+    "PMID": "PMID",
+    "arXiv": "arXiv"
 }
 
 var debugMarker = "----------------------------\n";
