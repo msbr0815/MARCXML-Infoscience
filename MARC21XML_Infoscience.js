@@ -368,7 +368,8 @@ var pubSourceMap = { // key: Zotero entry in "extra" ; value: Infoscience entry 
     "DOI": "DOI",
     "WOS": "ISI",
     //"Scopus" : "ScopusID", // Ignore for the moment: ScopusID doesn't show in Zotero
-    "PMID": "PMID"
+    "PMID": "PMID",
+    "arXiv": "arXiv"
 }
 
 var debugMarker = "----------------------------\n";
@@ -451,8 +452,7 @@ function doWhatWeWant() {
 
     var finalUnit = new Unit();
 
-    var recCreMailTemp = "zotRecCreMail";
-    var recCreMail = "";
+    var recCreMail = "zotRecCreMail";
 
     //Z.debug(debugMarker + JSON.stringify(dataMap, null, 4) + debugMarker);
 
@@ -484,9 +484,9 @@ function doWhatWeWant() {
             // Create final dataset for the unit
             var lab_code = item.legislativeBody;
             Object.defineProperty(finalUnit, "labLDAP", { value: lab_code }); // 909C0p
-            Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs["recid"] }); // 909C00 (Infoscience)
-            Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs["manager"] }); // 909C0m
-            Object.defineProperty(finalUnit, "labShort", { value: infoscience_labs["uid"] }); // 909C0x
+            Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs[lab_code]["recid"] }); // 909C00 (Infoscience)
+            Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs[lab_code]["manager"] }); // 909C0m
+            Object.defineProperty(finalUnit, "labShort", { value: infoscience_labs[lab_code]["uid"] }); // 909C0x
 
             // Create final dataset for the lab head
             // We will no longer need this when I'm done. AB 2020-02-14
@@ -845,7 +845,7 @@ function doWhatWeWant() {
 
             //960__a: e-mail of the record's creator
             currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "960", "ind1": " ", "ind2": " " }, true);
-            mapProperty(currentFieldNode, "subfield", { "code": "a" }, recCreMailTemp);
+            mapProperty(currentFieldNode, "subfield", { "code": "a" }, recCreMail);
 
             //970__a: import batch identifier
             currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "970", "ind1": " ", "ind2": " " }, true);
