@@ -54,7 +54,7 @@
  * (1)	Zotero can import literature from several sources
  * 	(1a)	If a list of DOIs is available, import directly into Zotero
  * 	(1b)	If a list of titles and authors is available, use the crossref text query to obtain a list of DOIs
- * 	(1c) If a bibtex file is available, import the bibtex file into Zotero
+ * 	(1c)    If a bibtex file is available, import the bibtex file into Zotero
  * (2)	OPTIONAL: Acquire more information about the bibliography from other sources, e. g. scopus or WoS
  * (3)	Define a bibliographic element that holds the common metadata
  * (4)	Export the bibliography as MARCXML and import it into Infoscience
@@ -291,10 +291,10 @@ function replaceAuthorSubfield(inputString, person)
 //Keep this for a future extension
 function MarcField(type, tag, idOne, idTwo)
 {
-	this.fieldType = type; //e. g. "datafield" (^[a-z]$)
-	this.fieldTag = tag; //e. g. "700" (^[0-9]{3}$)
-	this.fieldIDOne = idOne; //often " " (^[0-9 ]{1}$)
-	this.fieldIDTwo = idTwo; //often " " (^[0-9 ]{1}$)
+	this.fieldType = type; //e. g. "datafield" ([a-z]$)
+	this.fieldTag = tag; //e. g. "700" ([0-9]{3}$)
+	this.fieldIDOne = idOne; //often " " ([0-9 ]{1}$)
+	this.fieldIDTwo = idTwo; //often " " ([0-9 ]{1}$)
 	this.name = this.fieldTag + this.fieldIDOne.replace(" ", "_") + this.fieldIDTwo.replace(" ", "_");
 	this.subfield = {}; //subfields can be given as { "a": "<someStuff>", "b": "<someOtherStuff>", ...}
 }
@@ -303,7 +303,7 @@ function MarcField(type, tag, idOne, idTwo)
 //Keep this for a possible future extension
 functionMarcSubfield(sfid, text, parent)
 {
-	this.subfieldID = sfid; (^[a-z0-9 ]{1}$)
+	this.subfieldID = sfid; ([a-z0-9 ]{1}$)
 	this.subfieldText = text;
 	this.name = parent.name + "_" + this.subfieldID;
 }
@@ -368,7 +368,8 @@ var pubSourceMap = { // key: Zotero entry in "extra" ; value: Infoscience entry 
     "DOI": "DOI",
     "WOS": "ISI",
     //"Scopus" : "ScopusID", // Ignore for the moment: ScopusID doesn't show in Zotero
-    "PMID": "PMID"
+    "PMID": "PMID",
+    "arXiv": "arXiv"
 }
 
 var debugMarker = "----------------------------\n";
@@ -411,7 +412,7 @@ function doWhatWeWant() {
 
     //Read global options
     var exportNotes = Z.getOption("exportNotes");
-    var includeAbstract = Zotero.getOption("Include abstract");
+    var includeAbstract = Z.getOption("Include abstract");
 
     //MB, 14.01.2020
     //Infoscience-specific key-value pairs
@@ -451,8 +452,7 @@ function doWhatWeWant() {
 
     var finalUnit = new Unit();
 
-    var recCreMailTemp = "zotRecCreMail";
-    var recCreMail = "";
+    var recCreMail = "zotRecCreMail";
 
     //Z.debug(debugMarker + JSON.stringify(dataMap, null, 4) + debugMarker);
 
@@ -484,9 +484,9 @@ function doWhatWeWant() {
             // Create final dataset for the unit
             var lab_code = item.legislativeBody;
             Object.defineProperty(finalUnit, "labLDAP", { value: lab_code }); // 909C0p
-            Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs["recid"] }); // 909C00 (Infoscience)
-            Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs["manager"] }); // 909C0m
-            Object.defineProperty(finalUnit, "labShort", { value: infoscience_labs["uid"] }); // 909C0x
+            Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs[lab_code]["recid"] }); // 909C00 (Infoscience)
+            Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs[lab_code]["manager"] }); // 909C0m
+            Object.defineProperty(finalUnit, "labShort", { value: infoscience_labs[lab_code]["uid"] }); // 909C0x
 
             // Create final dataset for the lab head
             // We will no longer need this when I'm done. AB 2020-02-14
@@ -529,8 +529,7 @@ function doWhatWeWant() {
     record_array.forEach(function(item, index) {
     	typeOfPublication = item.itemType;
 
-        Z.debug(debugMarker +
-            "Entry " + ++itemCounter + ": " + typeOfPublication + "\n" + debugMarker);
+        Z.debug(debugMarker + "Entry " + (index + 1) + "/" + record_array.length + ": " + typeOfPublication + "\n" + debugMarker);
 
         //This is to demonstrate that the month in Zotero starts with 0
         //Z.debug(debugMarker + JSON.stringify(ZU.strToDate("31/1/2019"), null, 4) + debugMarker);
@@ -565,12 +564,12 @@ function doWhatWeWant() {
             //Record ID: Automatically created by Infoscience
 
             //Timestamp of last modification
-            //Leave this in: It's the first child instance and doesn't do any harm. WIll be overwritten by Infoscience
+            //Leave this in: It's the first child instance (required!) and doesn't do any harm. WIll be overwritten by Infoscience
             var cleanedDateModified = item.dateModified.replace(/\D/g, ''); //format must be YYYYMMDDHHMMSS
             var firstChild = mapProperty(recordNode, "controlfield", { "tag": "005" }, cleanedDateModified + '.0');
 
             //TO DO:
-            //Combine the ISBN and ISSN function using a MARC field object. Make sure the hyphens in the ISSN stay in place.
+            //Test the combined ISBN and ISSN cleaning function. Make sure the hyphens in both numbers stay in place.
 
             //020__a: ISBN			
             if (item.ISBN) {
@@ -826,7 +825,7 @@ function doWhatWeWant() {
             }
 
             //85641u: Additional URL
-            if (!item.DOI && item.url) {
+            if (!item.DOI && item.url) { //only add the URL if there's no DOI associated with this record
                 currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "856", "ind1": "4", "ind2": "1" }, true);
                 mapProperty(currentFieldNode, "subfield", { "code": "u" }, item.url);
             }
@@ -845,7 +844,7 @@ function doWhatWeWant() {
 
             //960__a: e-mail of the record's creator
             currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "960", "ind1": " ", "ind2": " " }, true);
-            mapProperty(currentFieldNode, "subfield", { "code": "a" }, recCreMailTemp);
+            mapProperty(currentFieldNode, "subfield", { "code": "a" }, recCreMail);
 
             //970__a: import batch identifier
             currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "970", "ind1": " ", "ind2": " " }, true);
