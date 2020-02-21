@@ -1,6 +1,6 @@
 {
-    "translatorID": "3d2572a6-e2b3-4b26-bcdd-881e197f594d",
-    "label": "MARC21XML-Infoscience v1.2.6-pre",
+    "translatorID": "7670d7e6-5a2c-4f19-9d9a-4cc81e24eb1e",
+    "label": "MARC21XML-Infoscience v1.3-pre",
     "creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL), Alain Borel (Infoscience-based improvements)",
     "target": "xml",
     "minVersion": "3.0",
@@ -134,6 +134,26 @@ function fillZerosLeft(text, size) {
     }
     return text;
 }
+
+/*
+//Combined ISBN and ISSN cleaning function
+function cleanisxn(rawData, marcTag) {
+	marcTag = marcTag.replace(/_/g, " ");
+	let fullArray = [];
+	let cleanData = rawData.trim(); //remove leading and trailig whitespaces first, just to be on the safe side
+	//ISSNs in Zotero are separated by a whitespace + comma, ISBNs by a whitespace.
+	if (cleanData.indexOf(" ") !== -1) { //Still some whitespaces found?
+		fullArray = cleanData.split(" "); //In this case, we assume that it's a list and extract all entries
+	}
+	else
+		fullArray.push(cleanData);//No list: We just add the value to the array
+	}
+	for (let i = 0; i < fullArray.length; i++) {
+		currentFieldNode = mapProperty(recordNode, "datafield", { "tag": marcTag.substring(0,3), "ind1": marcTag.charAt(3), "ind2": marcTag.charAt(4) }, true);
+		mapProperty(currentFieldNode, "subfield", { "code": marcTag.charAt(marcTag.length-1) }, fullArray[i].replace(/[a-zA-Z,\.;:_]/g, '')); //Delete what's left of the special characters and add to subfield
+	}
+}
+*/
 
 // @property can either a string which will be attachad as a textNode
 // or just the Boolean "true" which will then just create the nodes
@@ -462,7 +482,7 @@ function doWhatWeWant() {
             recCreMail = item.rights; // 960__a
 
             // Create final dataset for the unit
-            var lab_code = item.section;
+            var lab_code = item.legislativeBody;
             Object.defineProperty(finalUnit, "labLDAP", { value: lab_code }); // 909C0p
             Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs["recid"] }); // 909C00 (Infoscience)
             Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs["manager"] }); // 909C0m
@@ -496,6 +516,7 @@ function doWhatWeWant() {
 
 
 
+
     /*
     //Z.debug(debugMarker + 
     //	"Today, we're treating publications of\n" +
@@ -503,6 +524,7 @@ function doWhatWeWant() {
     //	debugMarker);
     */
 
+    var digits = record_array.length.toString().length;
     //Run through all the items in the list
     record_array.forEach(function(item, index) {
     	typeOfPublication = item.itemType;
@@ -552,6 +574,7 @@ function doWhatWeWant() {
 
             //020__a: ISBN			
             if (item.ISBN) {
+                //cleanisxn(item.ISBN, "020__a");
                 let rawISBN = item.ISBN.trim(); //remove leading and trailig whitespaces first, just to be on the safe side
                 if (rawISBN.indexOf(" ") !== -1) //Still some whitespaces found?
                 {
@@ -572,6 +595,7 @@ function doWhatWeWant() {
             //022__a: ISSN
             if (item.ISSN) // && bibliographicLevel == "m") //see also field 773 for e.g. articles
             {
+                //cleanisxn(item.ISSN, "022__a");
                 let rawISSN = item.ISSN.trim();
                 let allISSNArray = rawISSN.split(", ");
                 for (let i = 0; i < allISSNArray.length; i++) {
@@ -653,8 +677,7 @@ function doWhatWeWant() {
                 }
             }
 
-            //269__
-            //269__a: Date (MANDATORY); redundant with 260__a
+            //269__a: Date (MANDATORY); redundant with 260__c
             if (item.date) {
                 currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "269", "ind1": " ", "ind2": " " }, true);
                 mapProperty(currentFieldNode, "subfield", { "code": "a" }, dateString(item.date));
@@ -666,7 +689,7 @@ function doWhatWeWant() {
                 mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.numpages);
             }
             /*
-					//Original version: Account for volumes and running time as well
+					//Original version: Account for volumes and running time as well. Keep for possible extension
 					if (item.numPages || item.numberOfVolumes || item.runningTime) {
 					currentFieldNode = mapProperty(recordNode, "datafield",  {"tag" : "300", "ind1" : " ", "ind2" : " " } , true );
 					var extensionArray = [];
@@ -722,15 +745,6 @@ function doWhatWeWant() {
             		noteArray.push(item.notes[i].note);
             	}
             	mapProperty(currentFieldNode, "subfield",  {"code" : "a"} , noteArray.join("; ") );
-            }
-            */
-
-            //513__a: Report
-            //REVIEW: This is currently not defined.
-            /*
-            if (item.itemType && item.itemType =="report") {
-            	currentFieldNode = mapProperty(recordNode, "datafield",  {"tag" : "513", "ind1" : " ", "ind2" : " " } , true );
-            	mapProperty(currentFieldNode, "subfield",  {"code" : "a"} , item.itemType );
             }
             */
 
@@ -812,7 +826,7 @@ function doWhatWeWant() {
             }
 
             //85641u: Additional URL
-            if (item.url) {
+            if (!item.DOI && item.url) {
                 currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "856", "ind1": "4", "ind2": "1" }, true);
                 mapProperty(currentFieldNode, "subfield", { "code": "u" }, item.url);
             }
@@ -832,6 +846,10 @@ function doWhatWeWant() {
             //960__a: e-mail of the record's creator
             currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "960", "ind1": " ", "ind2": " " }, true);
             mapProperty(currentFieldNode, "subfield", { "code": "a" }, recCreMailTemp);
+
+            //970__a: import batch identifier
+            currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "970", "ind1": " ", "ind2": " " }, true);
+            mapProperty(currentFieldNode, "subfield", { "code": "a" }, index.padStart(digits, '0') + "/" + lab_code);
 
             //973__a: Affiliation [EPFL, OTHER]
             //973__r: Reviewing status [REVIEWED, NON-REVIEWED]
