@@ -1,6 +1,6 @@
 {
     "translatorID": "7670d7e6-5a2c-4f19-9d9a-4cc81e24eb1e",
-    "label": "MARC21XML-Infoscience v1.3-pre",
+    "label": "MARC21XML-Infoscience v1.3",
     "creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL), Alain Borel (Infoscience-based improvements)",
     "target": "xml",
     "minVersion": "3.0",
@@ -13,7 +13,7 @@
     "inRepository": true,
     "translatorType": 2,
     "browserSupport": "g",
-    "lastUpdated": "2020-02-12 10:49:00"
+    "lastUpdated": "2020-03-04 10:44:00"
 }
 
 // DISCLAIMER:
@@ -524,7 +524,7 @@ function doWhatWeWant() {
     //	debugMarker);
     */
 
-    var digits = record_array.length.toString().length;
+    var digits = record_array.length.toString().length; // necessary for field 970__a
     //Run through all the items in the list
     record_array.forEach(function(item, index) {
     	typeOfPublication = item.itemType;
@@ -848,7 +848,7 @@ function doWhatWeWant() {
 
             //970__a: import batch identifier
             currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "970", "ind1": " ", "ind2": " " }, true);
-            mapProperty(currentFieldNode, "subfield", { "code": "a" }, index.padStart(digits, '0') + "/" + lab_code);
+            mapProperty(currentFieldNode, "subfield", { "code": "a" }, ("" + index).padStart(digits, '0') + "/" + lab_code);
 
             //973__a: Affiliation [EPFL, OTHER]
             //973__r: Reviewing status [REVIEWED, NON-REVIEWED]
