@@ -1,6 +1,6 @@
 {
-    "translatorID": "7670d7e6-5a2c-4f19-9d9a-4cc81e24eb1e",
-    "label": "MARC21XML-Infoscience v1.3",
+    "translatorID": "98ba0c78-7405-492a-b5c1-c4e115c2859b",
+    "label": "MARC21XML-Infoscience v1.3.1",
     "creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL), Alain Borel (Infoscience-based improvements)",
     "target": "xml",
     "minVersion": "3.0",
@@ -13,7 +13,7 @@
     "inRepository": true,
     "translatorType": 2,
     "browserSupport": "g",
-    "lastUpdated": "2020-03-04 10:44:00"
+    "lastUpdated": "2020-03-05, 14:58:00"
 }
 
 // DISCLAIMER:
@@ -94,8 +94,8 @@
  * - sciper numbers (stored in "extras")
  * Additional data are necessary for a new unit, such as
  * - lab authority record (stored in "code")
- * - laboratory group ID (stored in "section")
- * - lab short name (stored in "legislative body")
+ * - laboratory group ID (stored in "legislative body")
+ * - lab short name (stored in "section")
  * The e-mail of the record creator is stored in "rights".
  * 
  * In possible future extensions, several authors and labs could be combined. Since it is possible to add an (almost)
@@ -135,8 +135,8 @@ function fillZerosLeft(text, size) {
     return text;
 }
 
-/*
 //Combined ISBN and ISSN cleaning function
+//Can be improved: Add hyphens if none are available
 function cleanisxn(rawData, marcTag) {
 	marcTag = marcTag.replace(/_/g, " ");
 	let fullArray = [];
@@ -145,7 +145,7 @@ function cleanisxn(rawData, marcTag) {
 	if (cleanData.indexOf(" ") !== -1) { //Still some whitespaces found?
 		fullArray = cleanData.split(" "); //In this case, we assume that it's a list and extract all entries
 	}
-	else
+	else {
 		fullArray.push(cleanData);//No list: We just add the value to the array
 	}
 	for (let i = 0; i < fullArray.length; i++) {
@@ -153,7 +153,6 @@ function cleanisxn(rawData, marcTag) {
 		mapProperty(currentFieldNode, "subfield", { "code": marcTag.charAt(marcTag.length-1) }, fullArray[i].replace(/[a-zA-Z,\.;:_]/g, '')); //Delete what's left of the special characters and add to subfield
 	}
 }
-*/
 
 // @property can either a string which will be attachad as a textNode
 // or just the Boolean "true" which will then just create the nodes
@@ -322,10 +321,10 @@ function ISTypeMap(book, bkSectn, cnfPaper, cnfProc, artcl, rprt) {
 
 //constructors for the temp and final versions of the common data
 //Units
-function Unit(auth, ID, short, mail) {
+function Unit(auth, uid, short, mail) {
     this.labAuth = auth; //Zotero: item.code
-    this.labLDAP = ID; //Zotero: item.section
-    this.labShort = short; //Zotero: item.legislativeBody
+    this.labLDAP = uid; //Zotero: item.legislativeBody
+    this.labShort = short; //Zotero: item.section
     this.labManagerEmail = mail; //Zotero: item.session
 }
 
@@ -446,9 +445,9 @@ function doWhatWeWant() {
     //fieldDoctype.bookSection = "CHAPTER";
     //fieldDoctype.report = "REPORT";
 
-    Z.debug(debugMarker + JSON.stringify(fieldPubtype, null, 4) + debugMarker);
-	Z.debug(debugMarker + JSON.stringify(fieldSubtype, null, 4) + debugMarker);
-	Z.debug(debugMarker + JSON.stringify(fieldDoctype, null, 4) + debugMarker);
+    //Z.debug(debugMarker + JSON.stringify(fieldPubtype, null, 4) + debugMarker);
+	//Z.debug(debugMarker + JSON.stringify(fieldSubtype, null, 4) + debugMarker);
+	//Z.debug(debugMarker + JSON.stringify(fieldDoctype, null, 4) + debugMarker);
 
     var finalUnit = new Unit();
 
@@ -482,11 +481,11 @@ function doWhatWeWant() {
             recCreMail = item.rights; // 960__a
 
             // Create final dataset for the unit
-            var lab_code = item.legislativeBody;
-            Object.defineProperty(finalUnit, "labLDAP", { value: lab_code }); // 909C0p
-            Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs[lab_code]["recid"] }); // 909C00 (Infoscience)
-            Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs[lab_code]["manager"] }); // 909C0m
-            Object.defineProperty(finalUnit, "labShort", { value: infoscience_labs[lab_code]["uid"] }); // 909C0x
+            var lab_acronym = item.section;
+            Object.defineProperty(finalUnit, "labLDAP", { value: infoscience_labs[lab_acronym]["uid"] }); // 909C0p
+            Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs[lab_acronym]["recid"] }); // 909C00 (Infoscience)
+            Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs[lab_acronym]["manager"] }); // 909C0m
+            Object.defineProperty(finalUnit, "labShort", { value: lab_acronym }); // 909C0x
 
             // Create final dataset for the lab head
             // We will no longer need this when I'm done. AB 2020-02-14
@@ -573,7 +572,8 @@ function doWhatWeWant() {
 
             //020__a: ISBN			
             if (item.ISBN) {
-                //cleanisxn(item.ISBN, "020__a");
+                cleanisxn(item.ISBN, "020__a");
+                /*
                 let rawISBN = item.ISBN.trim(); //remove leading and trailig whitespaces first, just to be on the safe side
                 if (rawISBN.indexOf(" ") !== -1) //Still some whitespaces found?
                 {
@@ -583,27 +583,21 @@ function doWhatWeWant() {
                         currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "020", "ind1": " ", "ind2": " " }, true);
                         mapProperty(currentFieldNode, "subfield", { "code": "a" }, allISBNArray[i].replace(/[a-zA-Z,\.;:_]/g, '')); //not replacing the hyphens. Original: .replace(/[a-zA-Z,\.;:\-_]/g, '')
                     }
-                    /*
-                    let cleanedISBN = item.ISBN.replace(/[a-zA-Z,\.;:\-_]/g, '');//can there be more than one isbn in the item.ISBN field? 
-                    currentFieldNode = mapProperty(recordNode, "datafield", {"tag" : "020", "ind1" : " ", "ind2" : " " }, true );
-                    mapProperty(currentFieldNode, "subfield", {"code" : "a"}, cleanedISBN );
-                    */
                 }
+                */
             }
 
             //022__a: ISSN
             if (item.ISSN) // && bibliographicLevel == "m") //see also field 773 for e.g. articles
             {
-                //cleanisxn(item.ISSN, "022__a");
+                cleanisxn(item.ISSN, "022__a");
+                /*
                 let rawISSN = item.ISSN.trim();
                 let allISSNArray = rawISSN.split(", ");
                 for (let i = 0; i < allISSNArray.length; i++) {
                     currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "022", "ind1": " ", "ind2": " " }, true);
                     mapProperty(currentFieldNode, "subfield", { "code": "a" }, allISSNArray[i]);
                 }
-                /*
-                currentFieldNode = mapProperty(recordNode, "datafield", {"tag" : "022", "ind1" : " ", "ind2" : " " }, true );
-                mapProperty(currentFieldNode, "subfield", {"code" : "a"}, item.ISSN );
                 */
             }
 
@@ -770,7 +764,7 @@ function doWhatWeWant() {
                     	// Z.debug(infoscience_authors[fullname]);
                     	infoscience_authors[fullname].forEach(function(author_item, index) {
                     		// Z.debug(author_item);
-                    		if (author_item[2].includes(lab_code)) {
+                    		if (author_item[2].includes(lab_acronym)) {
                     			mapProperty(currentFieldNode, "subfield", { "code": "g" }, author_item[0]);
                     			mapProperty(currentFieldNode, "subfield", { "code": "0" }, author_item[1]);
                     		}
@@ -832,14 +826,15 @@ function doWhatWeWant() {
 
             //Laboratory
             //909C00: Auth record
-            //909C0p: Short name
-            //909C0x: Group ID (U.....)
+            //909C0m: Lab manager email
+            //909C0p: Acronym
+            //909C0x: LDAP ID (U.....)
             if (typeOfPublication) {
                 currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "909", "ind1": "C", "ind2": "0" }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "0" }, infoscience_labs[lab_code]["recid"]);
-                mapProperty(currentFieldNode, "subfield", { "code": "m" }, infoscience_labs[lab_code]["manager"]);
-                mapProperty(currentFieldNode, "subfield", { "code": "p" }, lab_code);
-                mapProperty(currentFieldNode, "subfield", { "code": "x" }, infoscience_labs[lab_code]["uid"]);
+                mapProperty(currentFieldNode, "subfield", { "code": "0" }, infoscience_labs[lab_acronym]["recid"]);
+                mapProperty(currentFieldNode, "subfield", { "code": "m" }, infoscience_labs[lab_acronym]["manager"]);
+                mapProperty(currentFieldNode, "subfield", { "code": "p" }, lab_acronym);
+                mapProperty(currentFieldNode, "subfield", { "code": "x" }, infoscience_labs[lab_acronym]["uid"]);
             }
 
             //960__a: e-mail of the record's creator
@@ -848,7 +843,7 @@ function doWhatWeWant() {
 
             //970__a: import batch identifier
             currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "970", "ind1": " ", "ind2": " " }, true);
-            mapProperty(currentFieldNode, "subfield", { "code": "a" }, ("" + index).padStart(digits, '0') + "/" + lab_code);
+            mapProperty(currentFieldNode, "subfield", { "code": "a" }, ("" + (index+1)).padStart(digits, '0') + "/" + lab_acronym);
 
             //973__a: Affiliation [EPFL, OTHER]
             //973__r: Reviewing status [REVIEWED, NON-REVIEWED]
