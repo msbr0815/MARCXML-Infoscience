@@ -756,6 +756,7 @@ function doWhatWeWant() {
 
             for (let i = 0; i < item.creators.length; i++) {
                 let creator = item.creators[i];
+                // I couldn't find out what fieldMode meant in the shortness of time. This should be clarified.
                 if (!creator.fieldMode && creator.creatorType == "author") {
                     currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "700", "ind1": " ", "ind2": " " }, true);
                     var fullname = creator.lastName + ", " + creator.firstName;
@@ -771,6 +772,7 @@ function doWhatWeWant() {
                     	});
                     }
                 } else if (creator.creatorType != "editor") {
+                    //This condition is a bit simplified and potentially misleading. This case should be better defined!
                     //Corporate author: CERN (ou ENAC ?) publications
                     currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "710", "ind1": "2", "ind2": " " }, true);
                     mapProperty(currentFieldNode, "subfield", { "code": "a" }, creator.lastName);
