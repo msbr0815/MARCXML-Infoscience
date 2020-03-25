@@ -407,7 +407,7 @@ function doWhatWeWant() {
 
 
     // Z.debug(infoscience_authors["Helm, Lothar"]);
-    Z.debug(infoscience_labs["LPI"]);
+    //Z.debug(infoscience_labs["LPI"]);
 
     //Read global options
     var exportNotes = Z.getOption("exportNotes");
@@ -756,7 +756,6 @@ function doWhatWeWant() {
 
             for (let i = 0; i < item.creators.length; i++) {
                 let creator = item.creators[i];
-                Z.debug(creator)
                 if (!creator.fieldMode && creator.creatorType == "author") {
                     currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "700", "ind1": " ", "ind2": " " }, true);
                     var fullname = creator.lastName + ", " + creator.firstName;
@@ -928,7 +927,7 @@ var infoscience_labs = {};
 function extract_author_data(text) {
     Z.debug("About to load Infoscience author records.");
     infoscience_authors = JSON.parse(text);
-    Z.debug(infoscience_authors["Borel, Alain"]);
+    //Z.debug(infoscience_authors["Borel, Alain"]);
     // Finally we are ready to process the bibliographic records!
     doWhatWeWant();
 }
@@ -945,7 +944,7 @@ function download_infoscience_authors() {
 function extract_lab_data(text) {
     Z.debug("About to load Infoscience lab records.");
     infoscience_labs = JSON.parse(text);
-    Z.debug(infoscience_labs["SISB"]);
+    //Z.debug(infoscience_labs["SISB"]);
     // Then we proceed with retrieving the author records as JSON
     download_infoscience_authors();
 }
@@ -958,7 +957,6 @@ function download_infoscience_labs() {
     };
     Z.Utilities.HTTP.doGet(url, extract_lab_data, null, null, headers);
 }
-
 
 function doExport() {
     download_infoscience_labs();
