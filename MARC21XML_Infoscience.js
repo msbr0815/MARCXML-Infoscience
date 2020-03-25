@@ -1,6 +1,6 @@
 {
-    "translatorID": "98ba0c78-7405-492a-b5c1-c4e115c2859b",
-    "label": "MARC21XML-Infoscience v1.3.1",
+    "translatorID": "c97ed98c-f11c-49ae-969a-2689ac45cc96",
+    "label": "MARC21XML-Infoscience v1.3.2",
     "creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL), Alain Borel (Infoscience-based improvements)",
     "target": "xml",
     "minVersion": "3.0",
@@ -13,7 +13,7 @@
     "inRepository": true,
     "translatorType": 2,
     "browserSupport": "g",
-    "lastUpdated": "2020-03-05, 14:58:00"
+    "lastUpdated": "2020-03-25, 19:02:00"
 }
 
 // DISCLAIMER:
@@ -36,20 +36,20 @@
 
 /*
  * Define common variable for temporary and final values to be inserted into every publication.
- * 
+ *
  * SITUATION:
  * (I) A new laboratory is created at EPFL
  * (II) The new head of the new lab wishes to import all her/his pre-EPFL publications to Infoscience
  * (III) A list of publications (DOIs, publication titles or a bibtex file) is given to a librarian
- * 
- * 
+ *
+ *
  * SOLUTIONS SOUGHT:
  * (A) Create a harmonized publication list with entries that are as complete as possible
  * (B) Translate this list into an Infoscience-compatible format
  * (C) Provide metadata common to all entries and include them into the output file
  * (D) Avoid synchronising sensitive data with the Zotero servers
- * 
- * 
+ *
+ *
  * SOLUTION:
  * (1)	Zotero can import literature from several sources
  * 	(1a)	If a list of DOIs is available, import directly into Zotero
@@ -58,8 +58,8 @@
  * (2)	OPTIONAL: Acquire more information about the bibliography from other sources, e. g. scopus or WoS
  * (3)	Define a bibliographic element that holds the common metadata
  * (4)	Export the bibliography as MARCXML and import it into Infoscience
- * 
- * 
+ *
+ *
  * Steps (1) through (3) are taken care of by Zotero with possible utilization of crossref and WoS. Step (3) is required, since  This script
  * deals with step (4) by exporting the received and treated list into a MARCXML file, which is privileged over
  * a CSV file. The reason for this is a less memory-intensive treatment:
@@ -77,18 +77,18 @@
  * 		publications needs to be read before any operation on the output file can begin. During operation,
  * 		the memory holds one two-dimensional array (the full publication list) and one string (the file
  * 		to be exported). Existing keywords for publications pose an analogous challenge
- * 
- * 
+ *
+ *
  * The list of publications the script receives from Zotero is assumed to be ordered in a random manner.
  * Among these publications, an element holding data common to the whole list will appear eventually. Since
- * it has not been possible to 
- * 
+ * it has not been possible to
+ *
  * The idea is to retrieve the lab head's name and data from an entry of the bibliography which
  * is not common. The item "bill" is such an object and also offers the possibility to define three arrays:
- * "Sponsors", "Abstract" and "Extra". These can be used to define a list of authors, authority records and 
+ * "Sponsors", "Abstract" and "Extra". These can be used to define a list of authors, authority records and
  * sciper numbers. The item "bill" also offers fields that are suitable to hold information for the new unit
- * 
- * 
+ *
+ *
  * - authors (stored in "sponsors")
  * - authority recors (stored in "abstract")
  * - sciper numbers (stored in "extras")
@@ -97,10 +97,10 @@
  * - laboratory group ID (stored in "legislative body")
  * - lab short name (stored in "section")
  * The e-mail of the record creator is stored in "rights".
- * 
+ *
  * In possible future extensions, several authors and labs could be combined. Since it is possible to add an (almost)
  * arbitrary number of notes which can hold any amount of text, this could become quite flexible.
- * 
+ *
  * The next version could feature the use of objects to define datafields and their subfields to clean up the code
  */
 
@@ -225,7 +225,7 @@ function replaceAuthorSubfield(inputString, person)
 {
 	//inputString: The string that is to be changed
 	//person: The object holding the credentials of the lab head to be added
-	
+
 	//Find all names
 	//Search for the longest name first to avoid false positives: "Inventé, Jean-Michel" correspondrait aussi à "Inventé, J".
 	var possibleNames = new Array();
@@ -235,28 +235,28 @@ function replaceAuthorSubfield(inputString, person)
 	//Z.debug(nameVariants(person.firstName, person.lastName).shortStop);
 	possibleNames[2] = nameVariants(person.firstName, person.lastName).short;
 	//Z.debug(nameVariants(person.firstName, person.lastName).short);
-	
+
 	//Use the person's unabbreviated name in the record
 	var newString = subfield('a', possibleNames[0]) + subfield('0', person.lhAuth) + subfield('g', person.nrSciper);
 	Z.debug(newString);
-	
+
 	var searchString = '';
 	let checkString = '</s';
-	
+
 	var errorCount = 0;
 	let skipCount = 0;
 	//let output = "-1";
-	
+
 	var outputString = "ERROR";
-	
+
 	for ( let i = 0; i < possibleNames.length; i++ )
 	{
 		searchString = subfield('a', possibleNames[i]);
-		
+
 		//Z.debug(debugMarker);
 		Z.debug("Checking for " + searchString + ":");
 		//Z.debug(debugMarker);
-		
+
 		if (inputString.indexOf(searchString) !== -1)
 		{
 			//Check if checkString follows after the name. If not, add letters from the existing string until it matches.
@@ -275,7 +275,7 @@ function replaceAuthorSubfield(inputString, person)
 			skipCount++;
 		}
 	}
-	
+
 	if(skipCount === possibleNames.length)
 	{
 		Z.debug("No name variant has been found");
@@ -418,11 +418,11 @@ function doWhatWeWant() {
     /*
     The lists "fieldPubtype", "fieldSubtype" and "fieldDoctype" specify the possible
     contents of the fields 037__a, 336__a and 980__a in Infoscience, linked to the type of the item read from Zotero.
-	
+
     The object ISTypeMap provides the translation between the publication types from Zotero and the three classes of publications (publication type,
     publication subtype and doctype) used in Infoscience. ISTypeMap serves as blueprint for the three corresponding translators fieldPubtye,
     fieldSubtype and fieldDoctype defined below.
-	
+
     Since "conference proceedings" is not among Zotero's publication types, "Book" should be preferred to classify it in Zotero. In the case that a future
     update of Zotero introduces conference proceedings, the type maps currently contain a corresponding entry.
     */
@@ -438,7 +438,7 @@ function doWhatWeWant() {
     //possible values for field 980__a
     //Infoscience doctype
     //only almost identical to fieldPubtype
-    
+
     var fieldDoctype = new ISTypeMap("BOOK", "CHAPTER", "CONF", "PROC", "ARTICLE", "REPORT");
     //Can't do this: Changing fieldDoctype affects fieldPubtype
     //var fieldDoctype = fieldPubtype;
@@ -517,7 +517,7 @@ function doWhatWeWant() {
 
 
     /*
-    //Z.debug(debugMarker + 
+    //Z.debug(debugMarker +
     //	"Today, we're treating publications of\n" +
     //	labHeadFirstName + " " + labHeadLastName + ", " + unitShort + "\n" +
     //	debugMarker);
@@ -548,7 +548,7 @@ function doWhatWeWant() {
             }
 
             //ADD: Write a routine that differentiates the types of record in a finer manner. Motivation: Journal Article and Conference Paper
-            //are combined, but need to be distinguished for field 773	
+            //are combined, but need to be distinguished for field 773
 
             //initial value
             recordLength = 26; // 24 length of the leader + 1 record terminator + 1 field terminator after the leader and directory
@@ -570,7 +570,7 @@ function doWhatWeWant() {
             //TO DO:
             //Test the combined ISBN and ISSN cleaning function. Make sure the hyphens in both numbers stay in place.
 
-            //020__a: ISBN			
+            //020__a: ISBN
             if (item.ISBN) {
                 cleanisxn(item.ISBN, "020__a");
                 /*
@@ -632,7 +632,7 @@ function doWhatWeWant() {
                 if (item.extra.match(extraIdentifier[1])) //Really more of a security check, can probably be deleted
                 {
                     //replace with generalized cleaned identifier
-                    //let cleanedID = item.extra.replace(itemExtraPrefix, '');//remove prefix	
+                    //let cleanedID = item.extra.replace(itemExtraPrefix, '');//remove prefix
                     //Z.debug("ID " + extraIdentifier[1] + " matches!");
                     currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "024", "ind1": "7", "ind2": "0" }, true);
                     mapProperty(currentFieldNode, "subfield", { "code": "a" }, extraIdentifier[1].trim()); //Adds identifier from Zotero
@@ -703,7 +703,7 @@ function doWhatWeWant() {
 					if 	(item.runningTime) {
 						extensionArray.push( item.runningTime );
 					}
-					mapProperty(current	FieldNode, "subfield",  {"code" : "a"} , extensionArray.join(" : ") );		
+					mapProperty(current	FieldNode, "subfield",  {"code" : "a"} , extensionArray.join(" : ") );
 				} */
 
             //336__a: Publication sub-type (MANDATORY)
@@ -756,7 +756,8 @@ function doWhatWeWant() {
 
             for (let i = 0; i < item.creators.length; i++) {
                 let creator = item.creators[i];
-                if (!creator.fieldMode) {
+                Z.debug(creator)
+                if (!creator.fieldMode && creator.creatorType == "author") {
                     currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "700", "ind1": " ", "ind2": " " }, true);
                     var fullname = creator.lastName + ", " + creator.firstName;
                     mapProperty(currentFieldNode, "subfield", { "code": "a" }, fullname);
@@ -770,7 +771,7 @@ function doWhatWeWant() {
                     		}
                     	});
                     }
-                } else {
+                } else if (creator.creatorType != "editor") {
                     //Corporate author: CERN (ou ENAC ?) publications
                     currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "710", "ind1": "2", "ind2": " " }, true);
                     mapProperty(currentFieldNode, "subfield", { "code": "a" }, creator.lastName);

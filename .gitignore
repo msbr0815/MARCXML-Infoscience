@@ -8,3 +8,5 @@ ressources/
 tests/
 
 *.lnk
+
+.authfile

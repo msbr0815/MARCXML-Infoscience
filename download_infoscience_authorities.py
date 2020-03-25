@@ -7,6 +7,9 @@ import zipfile
 
 import pymarc
 
+def api_key:
+    with open (".authfile", "r") as authfile:
+        return authfile.readlines()
 
 def json2js(json_string, functionname='getData'):
     """function converting json string to javascript code: json_data -> json_data.js
@@ -38,17 +41,16 @@ def getIndexPositions(listOfElements, element):
             indexPos += 1
         except ValueError as e:
             break
- 
+
     return indexPosList
 
 
 def download_infoscience_authors():
-    INFOSCIENCE_API_KEY = 'Token 0a38e66a-6339-4a04-8073-57fd6579d3aa'
 
     authors = dict()
     search_url = "https://infoscience.epfl.ch/api/v1/search?p=&cc=People&c=People&format=files"
     #search_url = "https://infoscience.epfl.ch/api/v1/search?p=Shchutska&cc=People&c=People&format=files"
-    headers = {'User-Agent': 'Custom FORCE_SCRIPT_NAME = None', 'Authorization': INFOSCIENCE_API_KEY}
+    headers = {'User-Agent': 'Custom FORCE_SCRIPT_NAME = None', 'Authorization': api_key()}
     r = requests.get(search_url, headers=headers, stream=True)
     data = r.content
     dump = open('dump.dat', 'wb')
@@ -90,12 +92,11 @@ def download_infoscience_authors():
 
 
 def download_infoscience_labs():
-    INFOSCIENCE_API_KEY = 'Token 0a38e66a-6339-4a04-8073-57fd6579d3aa'
 
     labs = dict()
     search_url = "https://infoscience.epfl.ch/api/v1/search?p=&cc=Lab&c=Lab&format=files"
     #search_url = "https://infoscience.epfl.ch/api/v1/search?p=Shchutska&cc=People&c=People&format=files"
-    headers = {'User-Agent': 'Custom FORCE_SCRIPT_NAME = None', 'Authorization': INFOSCIENCE_API_KEY}
+    headers = {'User-Agent': 'Custom FORCE_SCRIPT_NAME = None', 'Authorization': api_key()}
     r = requests.get(search_url, headers=headers, stream=True)
     data = r.content
     dump = open('dump.dat', 'wb')
