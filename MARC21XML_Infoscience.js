@@ -1,6 +1,6 @@
 {
-    "translatorID": "c97ed98c-f11c-49ae-969a-2689ac45cc96",
-    "label": "MARC21XML-Infoscience v1.3.2",
+    "translatorID": "700e4e37-4936-4979-998e-3b696e7523c3",
+    "label": "MARC21XML-Infoscience v1.4",
     "creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL), Alain Borel (Infoscience-based improvements)",
     "target": "xml",
     "minVersion": "3.0",
@@ -13,7 +13,7 @@
     "inRepository": true,
     "translatorType": 2,
     "browserSupport": "g",
-    "lastUpdated": "2020-03-25, 19:02:00"
+    "lastUpdated": "2020-11-05, 19:40:00"
 }
 
 // DISCLAIMER:
@@ -218,6 +218,40 @@ function dateString(dateIn) {
 }
 
 /*
+//ADD: Check if value complies with the format of its type
+//Define function that can be reused in other parts of the script
+//checkIdentifierFormat(identifier, type)
+//Summary:
+//	Tests if the given identifier corresponds to the usual format of its  type.
+//
+//Variables:
+//	identifier: String, given by the values in supposedIdentifiers whose types match with those in pubSourceMap
+//	type: String, given by the keys in pubSourceMap
+//
+//Comments:
+//Align well with pubSourceMap
+//
+switch(supposedIdentifiers[testkey], key) {
+	case "WOS":
+		return;
+	case "arXiv":
+		return;
+	case "DOI":
+		return;
+	case "PMID":
+}
+*/
+
+/*
+function identifierMatchesTypeFormat(identifier, type) {
+	//requires new, currently commented pubSourceMap
+	let pattern = pubSourceMap[type]["pattern"];
+	return pattern.test(identifier);
+	//Check if identifier matches pattern
+}
+*/
+
+/*
 //REVIEW: The author data obtained from the server aren't necessarily uniform. Use this function to check for variants of the name and to unify the spelling.
 //This function should return the replacement string for the data map.
 
@@ -363,13 +397,39 @@ var secondTypeMap = { //based on 008/24-27
     "case": "v"
 };
 
-var pubSourceMap = { // key: Zotero entry in "extra" ; value: Infoscience entry in 024702
+var pubSourceMap = { // key contains Zotero entry in "extra" ; value contains Infoscience entry in 024702
     "DOI": "DOI",
     "WOS": "ISI",
     //"Scopus" : "ScopusID", // Ignore for the moment: ScopusID doesn't show in Zotero
     "PMID": "PMID",
     "arXiv": "arXiv"
 }
+
+//var pubSourceMap = {
+	// key contains Zotero entry in "extra"
+	// value contains Infoscience entry in 024702 and a regex pattern for matching
+	// regexp
+	// https://www.crossref.org/blog/dois-and-matching-regular-expressions/
+	// doi_pattern = /10[.][0-9]{4,}[.0-9]*\/[0-9a-zA-Z-;:_./"&\'\\()<>\[\]]+(?=<\/)/
+	// doi_pattern = /\b(10[.][0-9]{4,}(?:[.][0-9]+)*/(?:(?!["&\'<>])[[:graph:]])+)\b/
+	//"DOI": {
+	//	"value": "DOI",
+	//	"pattern": /.*/ //ADD DOI pattern
+	//},
+    //"WOS": {
+	//	"value": "ISI",
+	//	"pattern": /\d{15}/ //CHECK ISI pattern
+	//},
+    //"Scopus" : "ScopusID", // Ignore for the moment: ScopusID doesn't show in Zotero
+    //"PMID": {
+	//	"value": "PMID",
+	//	"pattern": /\d{8}/ //CHECK PMID pattern
+	//},
+    //"arXiv": {
+	//	"value": "arXiv",
+	//	"pattern": /\d{4}\.\d+/ //CHECK arXiv pattern
+	//}
+//}
 
 var debugMarker = "----------------------------\n";
 
@@ -394,520 +454,576 @@ var xmlDocument;
 
 //MB, 2020-01-08
 //ADD: Check if mandatory data are filled in (depending on the publication type) and only continue if all data are fine. Alternative: Let user know which entries are missing.
-//ADD: Clean up code (lots of redundancies, create reasonable functions!) and try and use dictionaries/hashtables (too complicated?)
-
-
-
-
 //Call the main function
 function doWhatWeWant() {
-    Z.setCharacterSet("utf-8");
-    var parser = new DOMParser();
-    xmlDocument = parser.parseFromString('<collection xmlns="http://www.loc.gov/MARC21/slim" />', 'application/xml');
+	Z.setCharacterSet("utf-8");
+	var parser = new DOMParser();
+	xmlDocument = parser.parseFromString('<collection xmlns="http://www.loc.gov/MARC21/slim" />', 'application/xml');
 
+	//Z.debug(infoscience_authors["Helm, Lothar"]);
+	//Z.debug(infoscience_labs["LPI"]);
 
-    // Z.debug(infoscience_authors["Helm, Lothar"]);
-    //Z.debug(infoscience_labs["LPI"]);
+	//Read global options
+	var exportNotes = Z.getOption("exportNotes");
+	var includeAbstract = Z.getOption("Include abstract");
 
-    //Read global options
-    var exportNotes = Z.getOption("exportNotes");
-    var includeAbstract = Z.getOption("Include abstract");
+	//MB, 14.01.2020
+	//Infoscience-specific key-value pairs
+	/*
+	The lists "fieldPubtype", "fieldSubtype" and "fieldDoctype" specify the possible
+	contents of the fields 037__a, 336__a and 980__a in Infoscience, linked to the type of the item read from Zotero.
 
-    //MB, 14.01.2020
-    //Infoscience-specific key-value pairs
-    /*
-    The lists "fieldPubtype", "fieldSubtype" and "fieldDoctype" specify the possible
-    contents of the fields 037__a, 336__a and 980__a in Infoscience, linked to the type of the item read from Zotero.
+	The object ISTypeMap provides the translation between the publication types from Zotero and the three classes of publications (publication type,
+	publication subtype and doctype) used in Infoscience. ISTypeMap serves as blueprint for the three corresponding translators fieldPubtye,
+	fieldSubtype and fieldDoctype defined below.
 
-    The object ISTypeMap provides the translation between the publication types from Zotero and the three classes of publications (publication type,
-    publication subtype and doctype) used in Infoscience. ISTypeMap serves as blueprint for the three corresponding translators fieldPubtye,
-    fieldSubtype and fieldDoctype defined below.
+	Since "conference proceedings" is not among Zotero's publication types, "Book" should be preferred to classify it in Zotero. In the case that a future
+	update of Zotero introduces conference proceedings, the type maps currently contain a corresponding entry.
+	*/
 
-    Since "conference proceedings" is not among Zotero's publication types, "Book" should be preferred to classify it in Zotero. In the case that a future
-    update of Zotero introduces conference proceedings, the type maps currently contain a corresponding entry.
-    */
+	//possible values for field 037__a
+	//Publication type
+	var fieldPubtype = new ISTypeMap("BOOK", "BOOK_CHAP", "CONF", "PROC", "ARTICLE", "REP_WORK");
 
-    //possible values for field 037__a
-    //Publication type
-    var fieldPubtype = new ISTypeMap("BOOK", "BOOK_CHAP", "CONF", "PROC", "ARTICLE", "REP_WORK");
+	//possible values for field 336__a
+	//Publication subtype
+	var fieldSubtype = new ISTypeMap("Books", "Book Chapters", "Conference Papers", "Conference Proceedings", "Journal Articles", "Reports");
 
-    //possible values for field 336__a
-    //Publication subtype
-    var fieldSubtype = new ISTypeMap("Books", "Book Chapters", "Conference Papers", "Conference Proceedings", "Journal Articles", "Reports");
+	//possible values for field 980__a
+	//Infoscience doctype
+	//only almost identical to fieldPubtype
 
-    //possible values for field 980__a
-    //Infoscience doctype
-    //only almost identical to fieldPubtype
+	var fieldDoctype = new ISTypeMap("BOOK", "CHAPTER", "CONF", "PROC", "ARTICLE", "REPORT");
+	//Can't do this: Changing fieldDoctype affects fieldPubtype
+	//var fieldDoctype = fieldPubtype;
+	//fieldDoctype.bookSection = "CHAPTER";
+	//fieldDoctype.report = "REPORT";
 
-    var fieldDoctype = new ISTypeMap("BOOK", "CHAPTER", "CONF", "PROC", "ARTICLE", "REPORT");
-    //Can't do this: Changing fieldDoctype affects fieldPubtype
-    //var fieldDoctype = fieldPubtype;
-    //fieldDoctype.bookSection = "CHAPTER";
-    //fieldDoctype.report = "REPORT";
-
-    //Z.debug(debugMarker + JSON.stringify(fieldPubtype, null, 4) + debugMarker);
+	//Z.debug(debugMarker + JSON.stringify(fieldPubtype, null, 4) + debugMarker);
 	//Z.debug(debugMarker + JSON.stringify(fieldSubtype, null, 4) + debugMarker);
 	//Z.debug(debugMarker + JSON.stringify(fieldDoctype, null, 4) + debugMarker);
 
-    var finalUnit = new Unit();
+	var finalUnit = new Unit();
+	var recCreMail = "zotRecCreMail";
 
-    var recCreMail = "zotRecCreMail";
+	//Z.debug(debugMarker + JSON.stringify(dataMap, null, 4) + debugMarker);
 
-    //Z.debug(debugMarker + JSON.stringify(dataMap, null, 4) + debugMarker);
+	//Publication status
+	var status = {
+		EPFLOther: "OTHER", // field 973__a
+		review: "REVIEWED", // field 973__r
+		publication: "PUBLISHED" // field 973__s
+	};
 
-    //Publication status
-    var status = {
-        EPFLOther: "OTHER", // field 973__a
-        review: "REVIEWED", // field 973__r
-        publication: "PUBLISHED" // field 973__s
-    };
+	itemCounter = 0;
+	var item, i;
+	Z.debug(debugMarker + "Start routine\n" + debugMarker);
+	var typeOfPublication = "";
+	var EPFLAuthorFieldNode;
 
-    itemCounter = 0;
-
-    var item, i;
-
-    Z.debug(debugMarker + "Start routine\n" + debugMarker);
-
-    var typeOfPublication = "";
-    var EPFLAuthorFieldNode;
-
-    // First pass: push all Zotero items into an empty array - except the special one where the lab, operator & project are specified
-    var record_array = [];
-    while ((item = Z.nextItem())) {
+	// First pass: push all Zotero items into an empty array - except the special one where the lab, operator & project are specified
+	/*
+	ATTENTION: Don't mix up these values
+	Data source		MARC	Description
+	------------	------	-----------
+	item.section	909C0p	lab Acronym (variable: lab_acronym)
+	.json			909C00	Infoscience authority record
+	.json			909C0m	email of the lab manager
+	.json			909C0x	unit shortcode
+	item.rights		960__a	email of the record creator
+	*/
+	var record_array = [];
+	while ((item = Z.nextItem())) {
     	typeOfPublication = item.itemType;
+			if (typeOfPublication == "bill" && item.title == "Infoscience") {
+				Z.debug("Good, I found the fake record with the information");
+				recCreMail = item.rights; // 960__a
+				// Create final dataset for the unit
+				var lab_acronym = item.section; // 909C0p
+				Z.debug("The lab acronym of the fake record is " + lab_acronym);
+				Object.defineProperty(finalUnit, "labLDAP", { value: infoscience_labs[lab_acronym]["uid"] }); // 909C0x (unit shortcode)
+				Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs[lab_acronym]["recid"] }); // 909C00 (Infoscience authority record)
+				Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs[lab_acronym]["manager"] }); // 909C0m (email lab manager)
+				Object.defineProperty(finalUnit, "labShort", { value: lab_acronym }); // 909C0p
 
-        if (typeOfPublication == "bill" && item.title == "Infoscience") {
-        	// Z.debug("found the fake record");
-            recCreMail = item.rights; // 960__a
+				// Create final dataset for the lab head
+				// We will no longer need this when I'm done. AB 2020-02-14
+				// Object.defineProperty(labHead, "firstName", { value: item.creators[0]['firstName'] }); //for 700__a
+				// Object.defineProperty(labHead, "lastName", { value: item.creators[0]['lastName'] }); //for 700__a
+				// Object.defineProperty(labHead, "lhAuth", { value: item.abstractNote }); //field 700_0
+				// Object.defineProperty(labHead, "nrSciper", { value: item.extra }); //field 700_g
 
-            // Create final dataset for the unit
-            var lab_acronym = item.section;
-            Object.defineProperty(finalUnit, "labLDAP", { value: infoscience_labs[lab_acronym]["uid"] }); // 909C0p
-            Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs[lab_acronym]["recid"] }); // 909C00 (Infoscience)
-            Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs[lab_acronym]["manager"] }); // 909C0m
-            Object.defineProperty(finalUnit, "labShort", { value: lab_acronym }); // 909C0x
+				//Z.debug(debugMarker + labHead + debugMarker);
+				//Z.debug(debugMarker + finalUnit + debugMarker);
 
-            // Create final dataset for the lab head
-            // We will no longer need this when I'm done. AB 2020-02-14
-            // Object.defineProperty(labHead, "firstName", { value: item.creators[0]['firstName'] }); //for 700__a
-            // Object.defineProperty(labHead, "lastName", { value: item.creators[0]['lastName'] }); //for 700__a
-            // Object.defineProperty(labHead, "lhAuth", { value: item.abstractNote }); //field 700_0
-            // Object.defineProperty(labHead, "nrSciper", { value: item.extra }); //field 700_g
+				//Z.debug(debugMarker + JSON.stringify(labHead, null, 4) + debugMarker);
+				//Z.debug(debugMarker + JSON.stringify(finalUnit, null, 4) + debugMarker);
 
-            //Z.debug(debugMarker + labHead + debugMarker);
-            //Z.debug(debugMarker + finalUnit + debugMarker);
-
-            //Z.debug(debugMarker + JSON.stringify(labHead, null, 4) + debugMarker);
-            //Z.debug(debugMarker + JSON.stringify(finalUnit, null, 4) + debugMarker);
-
-            //Add last element: Replacement of the author field
-            // var tempAuthorSubfield = subfield("a", finalUnit.unitHead.lastName + ", " + finalUnit.unitHead.firstName);
-            // var newAuthorSubfield = tempAuthorSubfield + subfield("0", finalUnit.unitHead.lhAuth) + subfield("g", finalUnit.unitHead.nrSciper);
-            //Z.debug("tempAuthorSubfield: " + tempAuthorSubfield);
-            //Z.debug("newAuthorSubfield: " + newAuthorSubfield);
+				//Add last element: Replacement of the author field
+				// var tempAuthorSubfield = subfield("a", finalUnit.unitHead.lastName + ", " + finalUnit.unitHead.firstName);
+				// var newAuthorSubfield = tempAuthorSubfield + subfield("0", finalUnit.unitHead.lhAuth) + subfield("g", finalUnit.unitHead.nrSciper);
+				//Z.debug("tempAuthorSubfield: " + tempAuthorSubfield);
+				//Z.debug("newAuthorSubfield: " + newAuthorSubfield);
 
         } else {
         	// Z.debug("this record looks legit, saving it");
             record_array.push(item);
         }
-
     }
 
+	/*
+	//Z.debug(debugMarker +
+	//	"Today, we're treating publications of\n" +
+	//	labHeadFirstName + " " + labHeadLastName + ", " + unitShort + "\n" +
+	//	debugMarker);
+	*/
 
+	var digits = record_array.length.toString().length; // necessary for field 970__a
+	//Run through all the items in the list
+	record_array.forEach(
+		function(item, index) {
+			typeOfPublication = item.itemType;
+			Z.debug(debugMarker + "Entry " + (index + 1) + "/" + record_array.length + ": " + typeOfPublication + "\n" + debugMarker);
+			//This is to demonstrate that the month in Zotero starts with 0
+			//Z.debug(debugMarker + JSON.stringify(ZU.strToDate("31/1/2019"), null, 4) + debugMarker);
 
+			// limit analysis to non-thesis entries
+			if (typeOfPublication != "thesis") {
+					//Z.debug(item);
+					//Differentiate several types of publications. These two variables are important for
+					//several places (in the original version of this script)
+					var typeOfRecord = "a";
+					if (typeMap[typeOfPublication]) { typeOfRecord = typeMap[typeOfPublication]; }
+					var bibliographicLevel = "m"; //default
+					if (typeOfPublication == "bookSection" || typeOfPublication == "conferencePaper" || typeOfPublication == "dictionaryEntry" || typeOfPublication == "encyclopediaArticle" || typeOfPublication == "journalArticle" || typeOfPublication == "magazineArticle" || typeOfPublication == "newspaperArticle") {
+						bibliographicLevel = "a";
+					}
+					//ADD: Write a routine that differentiates the types of record in a finer manner. Motivation: Journal Article and Conference Paper
+					//are combined, but need to be distinguished for field 773
 
-    /*
-    //Z.debug(debugMarker +
-    //	"Today, we're treating publications of\n" +
-    //	labHeadFirstName + " " + labHeadLastName + ", " + unitShort + "\n" +
-    //	debugMarker);
-    */
+					//initial value
+					recordLength = 26; // 24 length of the leader + 1 record terminator + 1 field terminator after the leader and directory
 
-    var digits = record_array.length.toString().length; // necessary for field 970__a
-    //Run through all the items in the list
-    record_array.forEach(function(item, index) {
-    	typeOfPublication = item.itemType;
+					//Create "record"
+					recordNode = mapProperty(xmlDocument.documentElement, "record", false, true);
+					var currentFieldNode;
+					//leader will be added later, but before this node
+					//Record ID: Automatically created by Infoscience
+					//Timestamp of last modification
+					//Leave this in: It's the first child instance (required!) and doesn't do any harm. WIll be overwritten by Infoscience
+					var cleanedDateModified = item.dateModified.replace(/\D/g, ''); //format must be YYYYMMDDHHMMSS
+					var firstChild = mapProperty(recordNode, "controlfield", { "tag": "005" }, cleanedDateModified + '.0');
+					//TO DO:
+					//Test the combined ISBN and ISSN cleaning function. Make sure the hyphens in both numbers stay in place.
+					//020__a: ISBN
+					if (item.ISBN) {
+						cleanisxn(item.ISBN, "020__a");
+						/*
+						let rawISBN = item.ISBN.trim(); //remove leading and trailig whitespaces first, just to be on the safe side
+						if (rawISBN.indexOf(" ") !== -1) { //Still some whitespaces found?
+							let allISBNArray = rawISBN.split(" ");
+							for (let i = 0; i < allISBNArray.length; i++) { //Create a field for every ISBN number found in the record
+								currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "020", "ind1": " ", "ind2": " " }, true);
+							}
+							mapProperty(currentFieldNode, "subfield", { "code": "a" }, allISBNArray[i].replace(/[a-zA-Z,\.;:_]/g, '')); //not replacing the hyphens. Original: .replace(/[a-zA-Z,\.;:\-_]/g, '')
+						}
+						*/
+					}
 
-        Z.debug(debugMarker + "Entry " + (index + 1) + "/" + record_array.length + ": " + typeOfPublication + "\n" + debugMarker);
+					//022__a: ISSN
+					if (item.ISSN) { // && bibliographicLevel == "m") //see also field 773 for e.g. articles
+						cleanisxn(item.ISSN, "022__a");
+						/*
+						let rawISSN = item.ISSN.trim();
+						let allISSNArray = rawISSN.split(", ");
+						for (let i = 0; i < allISSNArray.length; i++) {
+							currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "022", "ind1": " ", "ind2": " " }, true);
+							mapProperty(currentFieldNode, "subfield", { "code": "a" }, allISSNArray[i]);
+						}
+						*/
+					}
 
-        //This is to demonstrate that the month in Zotero starts with 0
-        //Z.debug(debugMarker + JSON.stringify(ZU.strToDate("31/1/2019"), null, 4) + debugMarker);
+					//0247_a: DOI
+					//0247_2: designation "doi"
+					//if (item.DOI && bibliographicLevel == "a")
+					if (item.DOI) {
+						//Z.debug("DOI found: " + item.DOI);
+						currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "024", "ind1": "7", "ind2": " " }, true);
+						mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.DOI);
+						mapProperty(currentFieldNode, "subfield", { "code": "2" }, "DOI");
+					}
 
-        // limit analysis to non-thesis entries
-        if (typeOfPublication != "thesis") {
-            //Z.debug(item);
+					//02470a: Item reference in other sources (WOS, PubMed, ...)
+					//27.10.20 Attention: Identifiers not coming from Web of Knowledge or crossref may add wrong values to the
+					// data field 02470a. This should be
+					//024702: designation ("isi", "PMID", ...), see object pubSourceMap
+					//if (item.extra && bibliographicLevel == "a")//Checking for the item type as well helps to better target the metadata
 
-            //Differentiate several types of publications. These two variables are important for
-            //several places (in the original version of this script)
-            var typeOfRecord = "a";
-            if (typeMap[typeOfPublication]) { typeOfRecord = typeMap[typeOfPublication]; }
+					if (item.extra) {
+						//Z.debug("Checking for identifier: We need one or several lines in the 'Extra' field.");
+						//Check all lines of the "Extra" field and check if allowed idintifiers are found.
+						//Allowed identifiers are in the pubSourceMap object
+						//let extraIdentifier = ""; // old routine
+						let extraContent = [];
+						if (item.extra.match("\n")) {
+							//Z.debug("'Extra' consists of several lines...");
+							extraContent = item.extra.split("\n"); //[0].split(patt)
+							//Check the line for all keys in pubSourceMap
+						} else {
+							//Z.debug("'Extra' consists of a single line...");
+							extraContent.push(item.extra);
+						}
+						/*
+						Z.debug("... which read(s):");
+						for (let line of extraContent) {
+							Z.debug(`...... line: ${line}`);
+						}*/
+						//Z.debug("");
+						//check for colon plus optional whitespace (as e. g. in "WoS:jasgdja")
+						//Z.debug("Let's check the content of 'Extra' for the patterns ':' or ': '...");
+						let patt = /[:]\s?/;
+						//We need to store the identifiers somewhere
+						let tempSupposed = "";
+						var supposedIdentifiers={};
+						for (var i = 0; i < extraContent.length; i++) {
+							//Z.debug("Splitting " + extraContent[i] + " ...");
+							//tempSupposed = extraContent[i].split(patt)[0];
+							tempSupposed = extraContent[i].split(patt);
+							if (tempSupposed.length > 1) {
+								//Z.debug(`Found, content split into ${tempSupposed[0]} and ${tempSupposed[1]}.`);
+								supposedIdentifiers[tempSupposed[0]] = tempSupposed[1];
+							} //else {
+								//Z.debug(`Couldn't split ${tempSupposed}. Continue with next item in 'Extra'.`)
+							//}
+						}
+						//Z.debug("");
 
-            var bibliographicLevel = "m"; //default
-            if (typeOfPublication == "bookSection" || typeOfPublication == "conferencePaper" || typeOfPublication == "dictionaryEntry" || typeOfPublication == "encyclopediaArticle" || typeOfPublication == "journalArticle" || typeOfPublication == "magazineArticle" || typeOfPublication == "newspaperArticle") {
-                bibliographicLevel = "a";
-            }
+						if (supposedIdentifiers != null) {
+							//Z.debug("+++");
+							//Z.debug("Checking entries:");
+							//for (const [key, value] of Object.entries(supposedIdentifiers)) {
+								//Z.debug(`... [${key}]: ${value}`);
+							//}
+							//Z.debug("Are these relevant identifiers?");
+							for (var testkey in supposedIdentifiers) {
+								let keyFound = false;
+								if(item.DOI && testkey.toLowerCase() == "doi") {
+									//Z.debug("DOI already saved, skip it.")
+									continue;
+								}
+								//Z.debug(`Looking for ${testkey} from supposedIdentifiers in pubSourceMap...`);
+								/*
+								//Attention: This could be an uppercase vs. lowercase matter. Better check carefully.
+								if(pubSourceMap.hasOwnProperty(testkey)) {
+									Z.debug(`... which was also found in pubSourceMap. Add ${testkey} and ${supposedIdentifiers[testkey]} to their subfields.`);
+									currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "024", "ind1": "7", "ind2": "0" }, true);
+									mapProperty(currentFieldNode, "subfield", { "code": "a" }, testkey; //identifier
+									mapProperty(currentFieldNode, "subfield", { "code": "2" }, supposedIdentifiers[testkey]); // symbol ("WOS", "isi", ...)
+									break;
+								} else {
+									Z.debug(`... which was not found in pubSourceMap. Continue.`);
+								}*/
+								for (var key in pubSourceMap) {
+									testkey = testkey.trim();
+									key = key.trim();
+									if (testkey.toLowerCase() == key.toLowerCase()) {
+										keyFound = true;
+										//Z.debug(`Found identifier (${key}). Add ${testkey} and ${supposedIdentifiers[testkey]} to their subfields.`);
+										currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "024", "ind1": "7", "ind2": "0" }, true);
+										mapProperty(currentFieldNode, "subfield", { "code": "a" }, testkey); //identifier
+										mapProperty(currentFieldNode, "subfield", { "code": "2" }, supposedIdentifiers[testkey]); // symbol ("WOS", "isi", ...)
+										break;
+									}
+								} //end for loop (pubSourceMap)
+								//if (!keyFound) {
+									//Z.debug(`... not found. Continue.`);
+								//}
+							} //end for loop (supposedIndentifiers)
+							//Z.debug("---");
+						} //else {
+							//Z.debug("No potential identifiers found. Continue with the remaining fields.");
+						//}
+						// old routine
+						//several lines: Only use first one (can be expanded later)
+						//extraIdentifier = item.extra.split("\n")[0].split(patt);
+						//} else {
+						//extraIdentifier = item.extra.split(patt);
+						//}
+						//Z.debug("extraIdentifier: " + extraIdentifier);
+						//if (item.extra.match(extraContent[1])) { //Really more of a security check, can probably be deleted
+							//replace with generalized cleaned identifier
+							//let cleanedID = item.extra.replace(itemExtraPrefix, '');//remove prefix
+							//Z.debug("ID " + extraIdentifier[1] + " matches!");
+							//currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "024", "ind1": "7", "ind2": "0" }, true);
+							//mapProperty(currentFieldNode, "subfield", { "code": "a" }, extraContent[1].trim()); //Adds identifier from Zotero
+							//mapProperty(currentFieldNode, "subfield", { "code": "2" }, pubSourceMap[extraContent[0]]); // translates Zotero to Infoscience
+							//Z.debug("pubSourceMap: " + pubSourceMap[extraIdentifier[0]]);
+					}
 
-            //ADD: Write a routine that differentiates the types of record in a finer manner. Motivation: Journal Article and Conference Paper
-            //are combined, but need to be distinguished for field 773
+					//037__a: Publication type (MANDATORY)
+					if (typeOfPublication) {
+						currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "037", "ind1": " ", "ind2": " " }, true);
+						mapProperty(currentFieldNode, "subfield", { "code": "a" }, fieldPubtype[typeOfPublication]);
+					}
 
-            //initial value
-            recordLength = 26; // 24 length of the leader + 1 record terminator + 1 field terminator after the leader and directory
+					//245__a: Title (MANDATORY)
+					if (item.title) {
+						currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "245", "ind1": " ", "ind2": " " }, true);
+						mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.title);
+					}
 
-            //Create "record"
-            recordNode = mapProperty(xmlDocument.documentElement, "record", false, true);
+					//Journal information
+					//260__a: Place
+					//260__b: Publisher
+					//260__c: Date (MANDATORY)
+					if (item.publisher || item.place || item.date) {
+						currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "260", "ind1": " ", "ind2": " " }, true);
+						if (item.place) {
+							mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.place);
+						}
+						if (item.publisher) {
+							mapProperty(currentFieldNode, "subfield", { "code": "b" }, item.publisher);
+						}
+						if (item.date) {
+							mapProperty(currentFieldNode, "subfield", { "code": "c" }, dateString(item.date));
+						}
+					}
 
-            var currentFieldNode;
+					//269__a: Date (MANDATORY); redundant with 260__c
+					if (item.date) {
+						currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "269", "ind1": " ", "ind2": " " }, true);
+						mapProperty(currentFieldNode, "subfield", { "code": "a" }, dateString(item.date));
+					}
 
-            //leader will be added later, but before this node
-
-            //Record ID: Automatically created by Infoscience
-
-            //Timestamp of last modification
-            //Leave this in: It's the first child instance (required!) and doesn't do any harm. WIll be overwritten by Infoscience
-            var cleanedDateModified = item.dateModified.replace(/\D/g, ''); //format must be YYYYMMDDHHMMSS
-            var firstChild = mapProperty(recordNode, "controlfield", { "tag": "005" }, cleanedDateModified + '.0');
-
-            //TO DO:
-            //Test the combined ISBN and ISSN cleaning function. Make sure the hyphens in both numbers stay in place.
-
-            //020__a: ISBN
-            if (item.ISBN) {
-                cleanisxn(item.ISBN, "020__a");
-                /*
-                let rawISBN = item.ISBN.trim(); //remove leading and trailig whitespaces first, just to be on the safe side
-                if (rawISBN.indexOf(" ") !== -1) //Still some whitespaces found?
-                {
-                    let allISBNArray = rawISBN.split(" ");
-                    for (let i = 0; i < allISBNArray.length; i++) //Create a field for every ISBN number found in the record
-                    {
-                        currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "020", "ind1": " ", "ind2": " " }, true);
-                        mapProperty(currentFieldNode, "subfield", { "code": "a" }, allISBNArray[i].replace(/[a-zA-Z,\.;:_]/g, '')); //not replacing the hyphens. Original: .replace(/[a-zA-Z,\.;:\-_]/g, '')
-                    }
-                }
-                */
-            }
-
-            //022__a: ISSN
-            if (item.ISSN) // && bibliographicLevel == "m") //see also field 773 for e.g. articles
-            {
-                cleanisxn(item.ISSN, "022__a");
-                /*
-                let rawISSN = item.ISSN.trim();
-                let allISSNArray = rawISSN.split(", ");
-                for (let i = 0; i < allISSNArray.length; i++) {
-                    currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "022", "ind1": " ", "ind2": " " }, true);
-                    mapProperty(currentFieldNode, "subfield", { "code": "a" }, allISSNArray[i]);
-                }
-                */
-            }
-
-            //0247_a: DOI
-            //0247_2: designation "doi"
-            //if (item.DOI && bibliographicLevel == "a")
-            if (item.DOI) {
-                //Z.debug("DOI found: " + item.DOI);
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "024", "ind1": "7", "ind2": " " }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.DOI);
-                mapProperty(currentFieldNode, "subfield", { "code": "2" }, "doi");
-            }
-
-            //02470a: Item reference in other sources (WOS, PubMed, ...)
-            //024702: designation ("isi", "PUBMED", ...), see object pubSourceMap
-            //if (item.extra && bibliographicLevel == "a")//Checking for the item type as well helps to better target the metadata
-            if (item.extra) {
-                //Z.debug("Checking identifier:");
-                let extraIdentifier = "";
-                //colon plus optional whitespace
-                let patt = /:\s?/;
-                if (item.extra.match("\n")) {
-                    //Z.debug("newline found");
-                    //several lines: Only use first one (can be expanded later)
-                    extraIdentifier = item.extra.split("\n")[0].split(patt);
-                } else {
-                    extraIdentifier = item.extra.split(patt);
-                }
-
-                //Z.debug("extraIdentifier: " + extraIdentifier);
-
-                if (item.extra.match(extraIdentifier[1])) //Really more of a security check, can probably be deleted
-                {
-                    //replace with generalized cleaned identifier
-                    //let cleanedID = item.extra.replace(itemExtraPrefix, '');//remove prefix
-                    //Z.debug("ID " + extraIdentifier[1] + " matches!");
-                    currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "024", "ind1": "7", "ind2": "0" }, true);
-                    mapProperty(currentFieldNode, "subfield", { "code": "a" }, extraIdentifier[1].trim()); //Adds identifier from Zotero
-                    mapProperty(currentFieldNode, "subfield", { "code": "2" }, pubSourceMap[extraIdentifier[0]]); // translates Zotero to Infoscience
-                    //Z.debug("pubSourceMap: " + pubSourceMap[extraIdentifier[0]]);
-                }
-            }
-
-            //037__a: Publication type (MANDATORY)
-            if (typeOfPublication) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "037", "ind1": " ", "ind2": " " }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "a" }, fieldPubtype[typeOfPublication]);
-            }
-
-            //245__a: Title (MANDATORY)
-            if (item.title) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "245", "ind1": " ", "ind2": " " }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.title);
-            }
-
-            //Journal information
-            //260__a: Place
-            //260__b: Publisher
-            //260__c: Date (MANDATORY)
-            if (item.publisher || item.place || item.date) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "260", "ind1": " ", "ind2": " " }, true);
-                if (item.place) {
-                    mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.place);
-                }
-                if (item.publisher) {
-                    mapProperty(currentFieldNode, "subfield", { "code": "b" }, item.publisher);
-                }
-                if (item.date) {
-                    mapProperty(currentFieldNode, "subfield", { "code": "c" }, dateString(item.date));
-                }
-            }
-
-            //269__a: Date (MANDATORY); redundant with 260__c
-            if (item.date) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "269", "ind1": " ", "ind2": " " }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "a" }, dateString(item.date));
-            }
-
-            //300__a: Number of pages
-            if (item.numPages) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "300", "ind1": " ", "ind2": " " }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.numpages);
-            }
-            /*
+					//300__a: Number of pages
+					if (item.numPages) {
+						currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "300", "ind1": " ", "ind2": " " }, true);
+						mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.numpages);
+					}
+					/*
 					//Original version: Account for volumes and running time as well. Keep for possible extension
 					if (item.numPages || item.numberOfVolumes || item.runningTime) {
-					currentFieldNode = mapProperty(recordNode, "datafield",  {"tag" : "300", "ind1" : " ", "ind2" : " " } , true );
-					var extensionArray = [];
-					if (item.numberOfVolumes) {
-						if ( item.numPages.match(/[a-zA-Z]/) ) {
+						currentFieldNode = mapProperty(recordNode, "datafield",  {"tag" : "300", "ind1" : " ", "ind2" : " " } , true );
+						var extensionArray = [];
+						if (item.numberOfVolumes) {
+							if ( item.numPages.match(/[a-zA-Z]/) ) {
 								extensionArray.push( item.numberOfVolumes );
-						} else {
-							extensionArray.push( item.numberOfVolumes + " v." );
+							} else {
+								extensionArray.push( item.numberOfVolumes + " v." );
+							}
 						}
-					}
-					if (item.numPages) {
-						if ( item.numPages.match(/[a-zA-Z]/) ) {
-							extensionArray.push( item.numPages );
-						} else {
-							extensionArray.push( item.numPages + " p." );
+						if (item.numPages) {
+							if ( item.numPages.match(/[a-zA-Z]/) ) {
+								extensionArray.push( item.numPages );
+							} else {
+								extensionArray.push( item.numPages + " p." );
+							}
 						}
+						if 	(item.runningTime) {
+							extensionArray.push( item.runningTime );
+						}
+						mapProperty(current	FieldNode, "subfield",  {"code" : "a"} , extensionArray.join(" : ") );
 					}
-					if 	(item.runningTime) {
-						extensionArray.push( item.runningTime );
+				*/
+
+				//336__a: Publication sub-type (MANDATORY)
+				if (typeOfPublication) {
+					currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "336", "ind1": " ", "ind2": " " }, true);
+					mapProperty(currentFieldNode, "subfield", { "code": "a" }, fieldSubtype[typeOfPublication]);
+				}
+
+				//340__a: item type OBJECT only, description of the material
+				if (item.medium) {
+					currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "340", "ind1": " ", "ind2": " " }, true);
+					mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.medium);
+				}
+
+				//4900_a: Series title
+				//4900_v: Series number
+				if (item.seriesTitle || item.seriesNumber) {
+					currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "490", "ind1": "0", "ind2": " " }, true);
+					mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.seriesTitle);
+					mapProperty(currentFieldNode, "subfield", { "code": "v" }, item.seriesNumber);
+				}
+
+				//500__a: Notes
+				//Don't export notes at the moment but keep option for future expansion
+				/*
+				if (item.notes.length>0 && exportNotes) {
+					currentFieldNode = mapProperty(recordNode, "datafield",  {"tag" : "500", "ind1" : " ", "ind2" : " " } , true );
+					let noteArray = [];
+					for (i=0; i<item.notes.length; i++) {
+						noteArray.push(item.notes[i].note);
 					}
-					mapProperty(current	FieldNode, "subfield",  {"code" : "a"} , extensionArray.join(" : ") );
-				} */
+					mapProperty(currentFieldNode, "subfield",  {"code" : "a"} , noteArray.join("; ") );
+				}
+				*/
 
-            //336__a: Publication sub-type (MANDATORY)
-            if (typeOfPublication) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "336", "ind1": " ", "ind2": " " }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "a" }, fieldSubtype[typeOfPublication]);
-            }
+				//520__a: Abstract (MANDATORY)
+				if (item.abstractNote && includeAbstract) {
+					currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "520", "ind1": " ", "ind2": " " }, true);
+					mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.abstractNote);
+				}
 
-            //340__a: item type OBJECT only, description of the material
-            if (item.medium) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "340", "ind1": " ", "ind2": " " }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.medium);
-            }
+				//REVIEW: The keywords are not in Zotero but are given upon input into the platform or by the laboratory
+				//700__0: Infoscience authority record
+				//700__a: Author list (MANDATORY)
+				//700__g: Affiliation or sciper
+				//7102_a: Corporate author
+				for (let i = 0; i < item.creators.length; i++) {
+					let creator = item.creators[i];
+					//I couldn't find out what fieldMode meant in the shortness of time. This should be clarified.
+					if (!creator.fieldMode && creator.creatorType == "author") {
+						currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "700", "ind1": " ", "ind2": " " }, true);
+						var fullname = creator.lastName + ", " + creator.firstName;
+						mapProperty(currentFieldNode, "subfield", { "code": "a" }, fullname);
+						if (fullname in infoscience_authors) {
+							//Z.debug(infoscience_authors[fullname]);
+							infoscience_authors[fullname].forEach(
+								function(author_item, index) {
+									//Z.debug(author_item);
+									if (author_item[2].includes(lab_acronym)) {
+										mapProperty(currentFieldNode, "subfield", { "code": "g" }, author_item[0]);
+										mapProperty(currentFieldNode, "subfield", { "code": "0" }, author_item[1]);
+									}
+								}
+							);
+						}
+					} else if (creator.creatorType != "editor") {
+						//This condition is a bit simplified and potentially misleading. This case should be better defined!
+						//Corporate author: CERN (ou ENAC ?) publications
+						currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "710", "ind1": "2", "ind2": " " }, true);
+						mapProperty(currentFieldNode, "subfield", { "code": "a" }, creator.lastName);
+					}
+				}
 
-            //4900_a: Series title
-            //4900_v: Series number
-            if (item.seriesTitle || item.seriesNumber) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "490", "ind1": "0", "ind2": " " }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.seriesTitle);
-                mapProperty(currentFieldNode, "subfield", { "code": "v" }, item.seriesNumber);
-            }
+				//Information about conferences
+				//7112_a: Conference or meeting name (MANDATORY)
+				//7112_c: Place
+				//7112_d: Date
+				if (typeOfPublication == "conferencePaper") {
+					currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "711", "ind1": "2", "ind2": " " }, true);
+					if (item.conferenceName) {
+						mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.conferenceName);
+					}
+					if (item.meetingName) {
+						mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.meetingName);
+					}
+					if (item.place) {
+						mapProperty(currentFieldNode, "subfield", { "code": "c" }, item.place);
+					}
+					if (item.date) {
+						mapProperty(currentFieldNode, "subfield", { "code": "d" }, dateString(item.date));
+					}
+				}
 
-            //500__a: Notes
-            //Don't export notes at the moment but keep option for future expansion
-            /*
-            if (item.notes.length>0 && exportNotes)
-            {
-            	currentFieldNode = mapProperty(recordNode, "datafield",  {"tag" : "500", "ind1" : " ", "ind2" : " " } , true );
-            	let noteArray = [];
-            	for (i=0; i<item.notes.length; i++)
-            	{
-            		noteArray.push(item.notes[i].note);
-            	}
-            	mapProperty(currentFieldNode, "subfield",  {"code" : "a"} , noteArray.join("; ") );
-            }
-            */
+				//Journal data
+				//773__j: Volume (MANDATORY)
+				//773__k: Issue (MANDATORY)
+				//773__q: Pages (MANDATORY)
+				//773__t: Title (MANDATORY)
+				if (bibliographicLevel == "a") {
+					currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "773", "ind1": " ", "ind2": " " }, true);
+					if (item.volume) {
+						mapProperty(currentFieldNode, "subfield", { "code": "j" }, item.volume);
+					}
+					if (item.issue) {
+						mapProperty(currentFieldNode, "subfield", { "code": "k" }, item.issue);
+					}
+					if (item.pages) {
+						mapProperty(currentFieldNode, "subfield", { "code": "q" }, item.pages);
+					}
+					if (item.publicationTitle) {
+						mapProperty(currentFieldNode, "subfield", { "code": "t" }, item.publicationTitle);
+					}
+				}
 
-            //520__a: Abstract (MANDATORY)
-            if (item.abstractNote && includeAbstract) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "520", "ind1": " ", "ind2": " " }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.abstractNote);
-            }
+				//85641u: Additional URL
+				if (!item.DOI && item.url) { //only add the URL if there's no DOI associated with this record
+					currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "856", "ind1": "4", "ind2": "1" }, true);
+					mapProperty(currentFieldNode, "subfield", { "code": "u" }, item.url);
+				}
 
-            //REVIEW: The keywords are not in Zotero but are given upon input into the platform or by the laboratory
-            //700__0: Infoscience authority record
-            //700__a: Author list (MANDATORY)
-            //700__g: Affiliation or sciper
+				//Laboratory
+				//909C00: Auth record
+				//909C0m: Lab manager email
+				//909C0p: Acronym
+				//909C0x: LDAP ID (U.....)
+				if (typeOfPublication) {
+					currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "909", "ind1": "C", "ind2": "0" }, true);
+					mapProperty(currentFieldNode, "subfield", { "code": "0" }, infoscience_labs[lab_acronym]["recid"]);
+					mapProperty(currentFieldNode, "subfield", { "code": "m" }, infoscience_labs[lab_acronym]["manager"]);
+					mapProperty(currentFieldNode, "subfield", { "code": "p" }, lab_acronym);
+					mapProperty(currentFieldNode, "subfield", { "code": "x" }, infoscience_labs[lab_acronym]["uid"]);
+				}
 
-            //7102_a: Corporate author
+				//960__a: e-mail of the record's creator
+				currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "960", "ind1": " ", "ind2": " " }, true);
+				mapProperty(currentFieldNode, "subfield", { "code": "a" }, recCreMail);
 
-            for (let i = 0; i < item.creators.length; i++) {
-                let creator = item.creators[i];
-                // I couldn't find out what fieldMode meant in the shortness of time. This should be clarified.
-                if (!creator.fieldMode && creator.creatorType == "author") {
-                    currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "700", "ind1": " ", "ind2": " " }, true);
-                    var fullname = creator.lastName + ", " + creator.firstName;
-                    mapProperty(currentFieldNode, "subfield", { "code": "a" }, fullname);
-                    if (fullname in infoscience_authors) {
-                    	// Z.debug(infoscience_authors[fullname]);
-                    	infoscience_authors[fullname].forEach(function(author_item, index) {
-                    		// Z.debug(author_item);
-                    		if (author_item[2].includes(lab_acronym)) {
-                    			mapProperty(currentFieldNode, "subfield", { "code": "g" }, author_item[0]);
-                    			mapProperty(currentFieldNode, "subfield", { "code": "0" }, author_item[1]);
-                    		}
-                    	});
-                    }
-                } else if (creator.creatorType != "editor") {
-                    //This condition is a bit simplified and potentially misleading. This case should be better defined!
-                    //Corporate author: CERN (ou ENAC ?) publications
-                    currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "710", "ind1": "2", "ind2": " " }, true);
-                    mapProperty(currentFieldNode, "subfield", { "code": "a" }, creator.lastName);
-                }
-            }
+				//970__a: import batch identifier
+				currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "970", "ind1": " ", "ind2": " " }, true);
+				mapProperty(currentFieldNode, "subfield", { "code": "a" }, ("" + (index+1)).padStart(digits, '0') + "/" + lab_acronym);
 
-            //Information about conferences
-            //7112_a: Conference or meeting name (MANDATORY)
-            //7112_c: Place
-            //7112_d: Date
-            if (typeOfPublication == "conferencePaper") {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "711", "ind1": "2", "ind2": " " }, true);
-                if (item.conferenceName) {
-                    mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.conferenceName);
-                }
-                if (item.meetingName) {
-                    mapProperty(currentFieldNode, "subfield", { "code": "a" }, item.meetingName);
-                }
-                if (item.place) {
-                    mapProperty(currentFieldNode, "subfield", { "code": "c" }, item.place);
-                }
-                if (item.date) {
-                    mapProperty(currentFieldNode, "subfield", { "code": "d" }, dateString(item.date));
-                }
-            }
+				//973__a: Affiliation [EPFL, OTHER]
+				//973__r: Reviewing status [REVIEWED, NON-REVIEWED]
+				//973__s: Publication status [SUBMITTED, ACCEPTED, PUBLISHED]
+				currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "973", "ind1": " ", "ind2": " " }, true);
+				mapProperty(currentFieldNode, "subfield", { "code": "a" }, status.EPFLOther);
+				mapProperty(currentFieldNode, "subfield", { "code": "r" }, status.review);
+				mapProperty(currentFieldNode, "subfield", { "code": "s" }, status.publication);
 
-            //Journal data
-            //773__j: Volume (MANDATORY)
-            //773__k: Issue (MANDATORY)
-            //773__q: Pages (MANDATORY)
-            //773__t: Title (MANDATORY)
-            if (bibliographicLevel == "a") {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "773", "ind1": " ", "ind2": " " }, true);
-                if (item.volume) {
-                    mapProperty(currentFieldNode, "subfield", { "code": "j" }, item.volume);
-                }
-                if (item.issue) {
-                    mapProperty(currentFieldNode, "subfield", { "code": "k" }, item.issue);
-                }
-                if (item.pages) {
-                    mapProperty(currentFieldNode, "subfield", { "code": "q" }, item.pages);
-                }
-                if (item.publicationTitle) {
-                    mapProperty(currentFieldNode, "subfield", { "code": "t" }, item.publicationTitle);
-                }
-            }
+				//980__a: Infoscience doctype (MANDATORY)
+				if (typeOfPublication) {
+					currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "980", "ind1": " ", "ind2": " " }, true);
+					mapProperty(currentFieldNode, "subfield", { "code": "a" }, fieldDoctype[typeOfPublication]);
+				}
 
-            //85641u: Additional URL
-            if (!item.DOI && item.url) { //only add the URL if there's no DOI associated with this record
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "856", "ind1": "4", "ind2": "1" }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "u" }, item.url);
-            }
+				//981__a: Validation (MANDATORY)
+				if (typeOfPublication) {
+					currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "981", "ind1": " ", "ind2": " " }, true);
+					mapProperty(currentFieldNode, "subfield", { "code": "a" }, "S2");
+				}
 
-            //Laboratory
-            //909C00: Auth record
-            //909C0m: Lab manager email
-            //909C0p: Acronym
-            //909C0x: LDAP ID (U.....)
-            if (typeOfPublication) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "909", "ind1": "C", "ind2": "0" }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "0" }, infoscience_labs[lab_acronym]["recid"]);
-                mapProperty(currentFieldNode, "subfield", { "code": "m" }, infoscience_labs[lab_acronym]["manager"]);
-                mapProperty(currentFieldNode, "subfield", { "code": "p" }, lab_acronym);
-                mapProperty(currentFieldNode, "subfield", { "code": "x" }, infoscience_labs[lab_acronym]["uid"]);
-            }
+				//finally, we will calculate the leader and add it as first child
+				recordLength += countFields.controlfield * 13 + countFields.datafield * 15 + countFields.subfield * 2;
+				//controlfields: 12 characters in the directory + 1 field terminator
+				//datafields: 12 characters in the directory + 2 indicators + 1 field terminator
+				//subfields: 1 subfield code + 1 subfield terminator
+				//base address of data starts after the leader and the directory
+				//var baseAdressData = 24 + countFields.controlfield * 12 + countFields.datafield * 12 + 1;
+				var baseAdressData = 24 + (countFields.controlfield + countFields.datafield) * 12 + 1;
+				var leaderContent = fillZerosLeft(recordLength, 5) + "n" + typeOfRecord + bibliographicLevel + " a22" + fillZerosLeft(baseAdressData, 5) + "zu 4500";
+				var newElement = xmlDocument.createElementNS(ns, "leader");
+				newElement.appendChild(xmlDocument.createTextNode(leaderContent));
+				recordNode.insertBefore(newElement, firstChild);
+			}
+		}
+	);
 
-            //960__a: e-mail of the record's creator
-            currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "960", "ind1": " ", "ind2": " " }, true);
-            mapProperty(currentFieldNode, "subfield", { "code": "a" }, recCreMail);
+	Zotero.write('<?xml version="1.0"?>' + "\n");
+	var serializer = new XMLSerializer();
+	var xmlDoc = serializer.serializeToString(xmlDocument);
 
-            //970__a: import batch identifier
-            currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "970", "ind1": " ", "ind2": " " }, true);
-            mapProperty(currentFieldNode, "subfield", { "code": "a" }, ("" + (index+1)).padStart(digits, '0') + "/" + lab_acronym);
+	//Use the data map to replace all the temporary values.
+	// var re = new RegExp(Object.keys(dataMap).join("|"), "g");
+	// var xmlDoc = xmlDoc.replace(re, function(matched) {
+	//    return dataMap[matched];
+	// });
 
-            //973__a: Affiliation [EPFL, OTHER]
-            //973__r: Reviewing status [REVIEWED, NON-REVIEWED]
-            //973__s: Publication status [SUBMITTED, ACCEPTED, PUBLISHED]
-            currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "973", "ind1": " ", "ind2": " " }, true);
-            mapProperty(currentFieldNode, "subfield", { "code": "a" }, status.EPFLOther);
-            mapProperty(currentFieldNode, "subfield", { "code": "r" }, status.review);
-            mapProperty(currentFieldNode, "subfield", { "code": "s" }, status.publication);
+	//Once the "hard data" are replaced, create a nice-looking xml file.
+	var pretty = xmlDoc.replace(/<record/g, "\n<record")
+		.replace(/<leader/g, "\n\t<leader")
+		.replace(/<controlfield/g, "\n\t<controlfield")
+		.replace(/<datafield/g, "\n\t<datafield")
+		.replace(/<\/datafield/g, "\n\t</datafield")
+		.replace(/<subfield/g, "\n\t\t<subfield")
+		.replace(/<\/record/g, "\n</record")
+		.replace("</collection", "\n</collection");
+		//Z.debug(pretty);
 
-            //980__a: Infoscience doctype (MANDATORY)
-            if (typeOfPublication) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "980", "ind1": " ", "ind2": " " }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "a" }, fieldDoctype[typeOfPublication]);
-            }
-
-            //981__a: Validation (MANDATORY)
-            if (typeOfPublication) {
-                currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "981", "ind1": " ", "ind2": " " }, true);
-                mapProperty(currentFieldNode, "subfield", { "code": "a" }, "S2");
-            }
-
-            //finally, we will calculate the leader and add it as first child
-
-            recordLength += countFields.controlfield * 13 + countFields.datafield * 15 + countFields.subfield * 2;
-            //controlfields: 12 characters in the directory + 1 field terminator
-            //datafields: 12 characters in the directory + 2 indicators + 1 field terminator
-            //subfields: 1 subfield code + 1 subfield terminator
-            //base address of data starts after the leader and the directory
-            //var baseAdressData = 24 + countFields.controlfield * 12 + countFields.datafield * 12 + 1;
-            var baseAdressData = 24 + (countFields.controlfield + countFields.datafield) * 12 + 1;
-
-            var leaderContent = fillZerosLeft(recordLength, 5) + "n" + typeOfRecord + bibliographicLevel + " a22" + fillZerosLeft(baseAdressData, 5) + "zu 4500";
-            var newElement = xmlDocument.createElementNS(ns, "leader");
-            newElement.appendChild(xmlDocument.createTextNode(leaderContent));
-            recordNode.insertBefore(newElement, firstChild);
-
-        }
-    });
-
-    Zotero.write('<?xml version="1.0"?>' + "\n");
-    var serializer = new XMLSerializer();
-    var xmlDoc = serializer.serializeToString(xmlDocument);
-
-    //Use the data map to replace all the temporary values.
-    // var re = new RegExp(Object.keys(dataMap).join("|"), "g");
-    // var xmlDoc = xmlDoc.replace(re, function(matched) {
-    //    return dataMap[matched];
-    // });
-
-    //Once the "hard data" are replaced, create a nice-looking xml file.
-    var pretty = xmlDoc.replace(/<record/g, "\n<record")
-        .replace(/<leader/g, "\n\t<leader")
-        .replace(/<controlfield/g, "\n\t<controlfield")
-        .replace(/<datafield/g, "\n\t<datafield")
-        .replace(/<\/datafield/g, "\n\t</datafield")
-        .replace(/<subfield/g, "\n\t\t<subfield")
-        .replace(/<\/record/g, "\n</record")
-        .replace("</collection", "\n</collection");
-    //Z.debug(pretty);
-
-    //Generate the MARCXML file: Append to already-written xml version statement
-    Zotero.write(pretty);
+		//Generate the MARCXML file: Append to already-written xml version statement
+		Zotero.write(pretty);
 }
 
 //https://github.com/zotero/zotero/commit/f0bd1e77ffab6dbc7fbd600dc1acc11844aa2e02
@@ -929,7 +1045,7 @@ var infoscience_labs = {};
 function extract_author_data(text) {
     Z.debug("About to load Infoscience author records.");
     infoscience_authors = JSON.parse(text);
-    //Z.debug(infoscience_authors["Borel, Alain"]);
+    Z.debug(infoscience_authors["Borel, Alain"]);
     // Finally we are ready to process the bibliographic records!
     doWhatWeWant();
 }
@@ -946,7 +1062,7 @@ function download_infoscience_authors() {
 function extract_lab_data(text) {
     Z.debug("About to load Infoscience lab records.");
     infoscience_labs = JSON.parse(text);
-    //Z.debug(infoscience_labs["SISB"]);
+	Z.debug(infoscience_labs['SISB']);
     // Then we proceed with retrieving the author records as JSON
     download_infoscience_authors();
 }
