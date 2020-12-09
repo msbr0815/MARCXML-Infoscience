@@ -1,6 +1,6 @@
 {
-    "translatorID": "700e4e37-4936-4979-998e-3b696e7523c3",
-    "label": "MARC21XML-Infoscience v1.4",
+    "translatorID": "cd5ab3e9-6fa2-4a20-b848-953c79e2e8c4",
+    "label": "MARC21XML-Infoscience v1.4.1",
     "creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL), Alain Borel (Infoscience-based improvements)",
     "target": "xml",
     "minVersion": "3.0",
@@ -13,7 +13,7 @@
     "inRepository": true,
     "translatorType": 2,
     "browserSupport": "g",
-    "lastUpdated": "2020-11-05, 19:40:00"
+    "lastUpdated": "2020-12-09, 13:57:00"
 }
 
 // DISCLAIMER:
@@ -355,11 +355,12 @@ function ISTypeMap(book, bkSectn, cnfPaper, cnfProc, artcl, rprt) {
 
 //constructors for the temp and final versions of the common data
 //Units
-function Unit(auth, uid, short, mail) {
+function Unit(auth, uid, short, liaison, mail) {
     this.labAuth = auth; //Zotero: item.code
     this.labLDAP = uid; //Zotero: item.legislativeBody
-    this.labShort = short; //Zotero: item.section
-    this.labManagerEmail = mail; //Zotero: item.session
+	this.labShort = short; //Zotero: item.section
+	this.labLiaison = liaison; //from server: liaison
+    this.labManagerEmail = mail; //from server: manager
 }
 
 //Persons (in case there's more than one EPFL author)
@@ -541,10 +542,11 @@ function doWhatWeWant() {
 				// Create final dataset for the unit
 				var lab_acronym = item.section; // 909C0p
 				Z.debug("The lab acronym of the fake record is " + lab_acronym);
-				Object.defineProperty(finalUnit, "labLDAP", { value: infoscience_labs[lab_acronym]["uid"] }); // 909C0x (unit shortcode)
-				Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs[lab_acronym]["recid"] }); // 909C00 (Infoscience authority record)
-				Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs[lab_acronym]["manager"] }); // 909C0m (email lab manager)
+				Object.defineProperty(finalUnit, "labLDAP", { value: infoscience_labs[lab_acronym]['uid'] }); // 909C0x (unit shortcode)
+				Object.defineProperty(finalUnit, "labAuth", { value: infoscience_labs[lab_acronym]['recid'] }); // 909C00 (Infoscience authority record)
+				Object.defineProperty(finalUnit, "labManagerEmail", { value: infoscience_labs[lab_acronym]['manager'] }); // 909C0m (email lab manager)
 				Object.defineProperty(finalUnit, "labShort", { value: lab_acronym }); // 909C0p
+				Object.defineProperty(finalUnit, "labLiaison", { value: infoscience_labs[lab_acronym]['liaison'] }); // 909C0p
 
 				// Create final dataset for the lab head
 				// We will no longer need this when I'm done. AB 2020-02-14
@@ -955,6 +957,7 @@ function doWhatWeWant() {
 					mapProperty(currentFieldNode, "subfield", { "code": "m" }, infoscience_labs[lab_acronym]["manager"]);
 					mapProperty(currentFieldNode, "subfield", { "code": "p" }, lab_acronym);
 					mapProperty(currentFieldNode, "subfield", { "code": "x" }, infoscience_labs[lab_acronym]["uid"]);
+					mapProperty(currentFieldNode, "subfield", { "code": "z" }, infoscience_labs[lab_acronym]["liaison"]);
 				}
 
 				//960__a: e-mail of the record's creator
@@ -968,9 +971,13 @@ function doWhatWeWant() {
 				//973__a: Affiliation [EPFL, OTHER]
 				//973__r: Reviewing status [REVIEWED, NON-REVIEWED]
 				//973__s: Publication status [SUBMITTED, ACCEPTED, PUBLISHED]
+				var pubStatus = status.review;				
+				if (typeOfPublication === "report") {
+					pubStatus = "NON-" + pubStatus;
+				}
 				currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "973", "ind1": " ", "ind2": " " }, true);
 				mapProperty(currentFieldNode, "subfield", { "code": "a" }, status.EPFLOther);
-				mapProperty(currentFieldNode, "subfield", { "code": "r" }, status.review);
+				mapProperty(currentFieldNode, "subfield", { "code": "r" }, pubStatus);
 				mapProperty(currentFieldNode, "subfield", { "code": "s" }, status.publication);
 
 				//980__a: Infoscience doctype (MANDATORY)
