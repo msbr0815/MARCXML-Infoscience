@@ -1,6 +1,6 @@
 {
     "translatorID": "cd5ab3e9-6fa2-4a20-b848-953c79e2e8c4",
-    "label": "MARC21XML-Infoscience v1.4.1",
+    "label": "MARC21XML-Infoscience v1.4.2",
     "creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL), Alain Borel (Infoscience-based improvements)",
     "target": "xml",
     "minVersion": "3.0",
@@ -13,7 +13,7 @@
     "inRepository": true,
     "translatorType": 2,
     "browserSupport": "g",
-    "lastUpdated": "2020-12-09, 13:57:00"
+    "lastUpdated": "2020-12-22, 09:00:00"
 }
 
 // DISCLAIMER:
@@ -1059,7 +1059,7 @@ function extract_author_data(text) {
 
 function download_infoscience_authors() {
     Z.debug("About to fetch Infoscience author records.");
-    var url = 'https://sisbsrv2.epfl.ch/static/infoscience_authors.json';
+    var url = 'http://sisbsrv9.epfl.ch/marcxml-infoscience/infoscience_authors.json';
     var headers = {
         'User-Agent': "MARC21XML-Infoscience"
     };
@@ -1076,7 +1076,7 @@ function extract_lab_data(text) {
 
 function download_infoscience_labs() {
     Z.debug("About to fetch Infoscience author records.");
-    var url = 'https://sisbsrv2.epfl.ch/static/infoscience_labs.json';
+    var url = 'http://sisbsrv9.epfl.ch/marcxml-infoscience/infoscience_labs.json';
     var headers = {
         'User-Agent': "MARC21XML-Infoscience"
     };
