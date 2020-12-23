@@ -2,13 +2,15 @@
 
 import requests
 import io
+import os
 import json
 import zipfile
 
 import pymarc
 
 def read_api_key():
-    return open('infoscience_api_key.txt','r').readlines()[0].strip()
+    #return open('infoscience_api_key.txt','r').readlines()[0].strip()
+    return os.getenv('INFOSCIENCE_API_KEY')
 
 def json2js(json_string, functionname='getData'):
     """function converting json string to javascript code: json_data -> json_data.js
