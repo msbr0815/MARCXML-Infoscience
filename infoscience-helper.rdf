@@ -1,0 +1,27 @@
+<rdf:RDF
+ xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+ xmlns:z="http://www.zotero.org/namespaces/export#"
+ xmlns:dcterms="http://purl.org/dc/terms/"
+ xmlns:dc="http://purl.org/dc/elements/1.1/"
+ xmlns:bib="http://purl.org/net/biblio#"
+ xmlns:foaf="http://xmlns.com/foaf/0.1/">
+    <bib:Legislation rdf:about="#item_32851">
+        <z:itemType>bill</z:itemType>
+        <dcterms:isPartOf>
+           <bib:Part><dc:title>LSI2</dc:title></bib:Part>
+        </dcterms:isPartOf>
+        <z:sponsors>
+            <rdf:Seq>
+                <rdf:li>
+                    <foaf:Person>
+                        <foaf:surname>Enz</foaf:surname>
+                        <foaf:givenName>C. C.</foaf:givenName>
+                    </foaf:Person>
+                </rdf:li>
+            </rdf:Seq>
+        </z:sponsors>
+        <dc:rights>alain.borel@epfl.ch</dc:rights>
+        <dcterms:abstract>This is a sample helper record to be included in the collection you want to export as Infoscience-MARCXML.</dcterms:abstract>
+        <dc:title>Infoscience</dc:title>
+    </bib:Legislation>
+</rdf:RDF>
