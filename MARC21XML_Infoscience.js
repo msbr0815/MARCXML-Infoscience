@@ -1,6 +1,6 @@
 {
-    "translatorID": "cd5ab3e9-6fa2-4a20-b848-953c79e2e8c4",
-    "label": "MARC21XML-Infoscience v1.4.2",
+    "translatorID": "5c9e171a-5d25-4c99-9012-7d65ed6092e0",
+    "label": "MARC21XML-Infoscience v1.4.3",
     "creator": "Philipp Zumstein (original version: 'zotkat'), Matthias Bräuninger (tailoring to EPFL), Alain Borel (Infoscience-based improvements)",
     "target": "xml",
     "minVersion": "3.0",
@@ -13,7 +13,7 @@
     "inRepository": true,
     "translatorType": 2,
     "browserSupport": "g",
-    "lastUpdated": "2020-12-22, 09:00:00"
+    "lastUpdated": "2020-12-28, 16:44:00"
 }
 
 // DISCLAIMER:
@@ -374,7 +374,9 @@ function Person(first, last, auth, sciper) {
     this.nrSciper = sciper;
 }
 
-//Variables
+//Variables and constants
+const EXCLUDED = new Set(["thesis", "presentation", "patent"]);
+
 var typeMap = {
     //default value "a" for every written text is taken (e.g. for book, article, report, webpage,...), everything else should be declared here
     "artwork": "k",
@@ -568,18 +570,15 @@ function doWhatWeWant() {
 				//Z.debug("newAuthorSubfield: " + newAuthorSubfield);
 
         } else {
-        	// Z.debug("this record looks legit, saving it");
-            record_array.push(item);
+            if (EXCLUDED.has(typeOfPublication) === false) { //skip certain document types
+				Z.debug(`Adding record #${record_array.length + 1}...`);
+	        	record_array.push(item);
+			} else {
+				Z.debug(`Skipping entry of type ${typeOfPublication}.`);
+			}
         }
-    }
-
-	/*
-	//Z.debug(debugMarker +
-	//	"Today, we're treating publications of\n" +
-	//	labHeadFirstName + " " + labHeadLastName + ", " + unitShort + "\n" +
-	//	debugMarker);
-	*/
-
+	}
+	
 	var digits = record_array.length.toString().length; // necessary for field 970__a
 	//Run through all the items in the list
 	record_array.forEach(
