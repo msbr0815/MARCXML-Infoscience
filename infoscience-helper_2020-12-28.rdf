@@ -1,0 +1,30 @@
+<rdf:RDF
+ xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+ xmlns:res="http://purl.org/vocab/resourcelist/schema#"
+ xmlns:dcterms="http://purl.org/dc/terms/"
+ xmlns:bibo="http://purl.org/ontology/bibo/"
+ xmlns:z="http://www.zotero.org/namespaces/export#"
+ xmlns:foaf="http://xmlns.com/foaf/0.1/">
+    <z:UserItem rdf:about="http://zotero.org/users/6252188/items/NW7JK6NH">
+        <res:resource>
+            <bibo:Bill>
+                <dcterms:title>Infoscience</dcterms:title>
+                <dcterms:abstract>This is a sample helper record to be included in the collection you want to export as Infoscience-MARCXML.
+À changer :
+- Auteur -&gt; nom et prénom de l'auteur principal
+- Section -&gt; Unité
+- Autorisations -&gt; adresse mail du bibliothécaire travaillant l'import</dcterms:abstract>
+                <bibo:section>LSI2</bibo:section>
+                <dcterms:creator rdf:nodeID="n4"/>
+                <bibo:authorList>
+                   <rdf:Seq><rdf:li rdf:nodeID="n4"/></rdf:Seq>
+                </bibo:authorList>
+            </bibo:Bill>
+        </res:resource>
+        <dcterms:rights>nom.du.bibliothecaire@epfl.ch</dcterms:rights>
+    </z:UserItem>
+    <foaf:Person rdf:nodeID="n4">
+        <foaf:givenName>Principal</foaf:givenName>
+        <foaf:surname>Auteur</foaf:surname>
+    </foaf:Person>
+</rdf:RDF>
