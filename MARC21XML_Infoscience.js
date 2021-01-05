@@ -8,7 +8,8 @@
     "priority": 100,
     "displayOptions": {
         "exportNotes": true,
-        "Include abstract": true
+		"Include abstract": true,
+		"Running number": true
     },
     "inRepository": true,
     "translatorType": 2,
@@ -469,6 +470,7 @@ function doWhatWeWant() {
 	//Read global options
 	var exportNotes = Z.getOption("exportNotes");
 	var includeAbstract = Z.getOption("Include abstract");
+	var runningNumber = Z.getOption("Running number");
 
 	//MB, 14.01.2020
 	//Infoscience-specific key-value pairs
@@ -963,9 +965,11 @@ function doWhatWeWant() {
 				currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "960", "ind1": " ", "ind2": " " }, true);
 				mapProperty(currentFieldNode, "subfield", { "code": "a" }, recCreMail);
 
-				//970__a: import batch identifier
-				currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "970", "ind1": " ", "ind2": " " }, true);
-				mapProperty(currentFieldNode, "subfield", { "code": "a" }, ("" + (index+1)).padStart(digits, '0') + "/" + lab_acronym);
+				//970__a: running number (import batch identifier)
+				if (runningNumber) {
+					currentFieldNode = mapProperty(recordNode, "datafield", { "tag": "970", "ind1": " ", "ind2": " " }, true);
+					mapProperty(currentFieldNode, "subfield", { "code": "a" }, ("" + (index+1)).padStart(digits, '0') + "/" + lab_acronym);
+				}
 
 				//973__a: Affiliation [EPFL, OTHER]
 				//973__r: Reviewing status [REVIEWED, NON-REVIEWED]
